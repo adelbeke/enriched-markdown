@@ -111,7 +111,10 @@ class MathContainerView(
   }
 
   private fun updateAccessibilityLabel() {
-    contentDescription = accessibilityLabels.mathEquation.replace("{latex}", cachedLatex)
+    contentDescription =
+      accessibilityLabels.mathEquation
+        .replace("{speech}", cachedLatex)
+        .replace("{latex}", cachedLatex)
   }
 
   private fun showContextMenu(anchor: View): Boolean {
