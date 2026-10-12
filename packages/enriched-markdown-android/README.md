@@ -29,10 +29,7 @@ The `compose` artifact pulls in internal `ui` and `parser` modules transitively.
 
 Features with a heavy dependency of their own ship as separate artifacts that you enable where you need them. Today there are two: **math**, which renders LaTeX (see [LaTeX math](#latex-math)), and **code-highlight**, which colors fenced code (see [Code highlighting](#code-highlighting)).
 
-> [!NOTE]
-> Neither artifact is on Maven Central yet. They will be published with the next release.
-
-Once they are released, add the ones you need next to `compose`, using the same version for all:
+Add the ones you need next to `compose`, using the same version for all:
 
 ```kotlin
 dependencies {
@@ -42,7 +39,7 @@ dependencies {
 }
 ```
 
-An app that does not add a line pays nothing for that plugin — not the artifact, and not its native library. That matters beyond download size: the engine behind `:math` ships no 32-bit `x86` native library (`arm64-v8a`, `armeabi-v7a` and `x86_64` only), so depending on it would otherwise constrain where the whole library can run. `:code-highlight` adds about 8 MB per ABI to an installed app; see [Size and licenses](#size-and-licenses).
+An app that renders no math does not add this line and pays nothing for it — not the artifact, and not its native LaTeX engine. That matters beyond download size: the engine behind `:math` ships no 32-bit `x86` native library (`arm64-v8a`, `armeabi-v7a` and `x86_64` only), so depending on it would otherwise constrain where the whole library can run.
 
 Enable plugins for every `EnrichedMarkdownText` in a subtree by wrapping it in a `MarkdownPlugins` scope:
 
@@ -686,7 +683,7 @@ A fenced block is colored when its info string names one of the bundled language
 | TypeScript | `typescript`, `ts` |
 | YAML | `yaml`, `yml` |
 
-Info strings match case-insensitively. There is no Kotlin grammar, so a `kotlin` block renders plain. Highlighting runs with the render, off the main thread, and tokens are cached per block, so a re-render — a style change, or a streamed message growing below its code — does not parse an unchanged block again. A block over 50 KB or 2,000 lines is left plain.
+Info strings match case-insensitively.
 
 ### Colors
 
