@@ -85,7 +85,7 @@ const argTypes = {
   mathEquation: {
     control: 'text',
     description:
-      'accessibilityLabels.math.equation — math equation. `{speech}` → the formula read in English (iOS), `{latex}` → equation source.',
+      'accessibilityLabels.math.equation — math equation. `{speech}` → the formula read in English, `{latex}` → equation source.',
   },
   rotorHeadings: {
     control: 'text',

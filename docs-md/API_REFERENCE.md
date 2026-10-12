@@ -721,7 +721,7 @@ interface AccessibilityLabels {
 }
 ```
 
-Placeholders (`{n}`, `{content}`, `{speech}`, `{latex}`) are substituted on the native side at speak time and must be preserved in translations; `{speech}` reads the formula in English on iOS (Android substitutes the source).
+Placeholders (`{n}`, `{content}`, `{speech}`, `{latex}`) are substituted on the native side at speak time and must be preserved in translations; `{speech}` reads the formula in English.
 
 **Example:**
 

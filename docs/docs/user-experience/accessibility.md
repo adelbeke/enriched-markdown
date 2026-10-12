@@ -63,7 +63,7 @@ packages ship. */}
 | `math.equation`                                   | `"Math: {speech}"`                    | iOS + Android |
 | `rotor.headings` / `rotor.links` / `rotor.images` | `"Headings"` / `"Links"` / `"Images"` | iOS only      |
 
-Placeholders: `{n}` (1-based index), `{content}` (comma-joined cell texts), `{speech}` (the formula read in English; iOS only, Android substitutes the source), `{latex}` (equation source). Preserve placeholder names exactly in translations. Defaults use the no-plural cardinal form so a single template works in every language.
+Placeholders: `{n}` (1-based index), `{content}` (comma-joined cell texts), `{speech}` (the formula read in English), `{latex}` (equation source). Preserve placeholder names exactly in translations. Defaults use the no-plural cardinal form so a single template works in every language.
 
 ## Supported elements
 
@@ -75,13 +75,13 @@ Placeholders: `{n}` (1-based index), `{content}` (comma-joined cell texts), `{sp
 | **List items**  | "Bullet point" / "List item N" added as the element's accessibility value               | Same string set as the element's `roleDescription`, which replaces the role |
 | **Blockquotes** | "Blockquote" / "Nested blockquote" added as the accessibility value                     | Same string set as `roleDescription`                                       |
 | **Table rows**  | One focusable element per row, `"Row N: <cells>"`; header row carries the heading trait | One focusable overlay per row, same template; header row marked as heading |
-| **Math**        | Own element per formula, inline and block, read in English ("Math: x squared over 2") | Math blocks announce `"Math: <latex>"` (source read verbatim)              |
+| **Math**        | Own element per formula, inline and block, read in English ("Math: x squared over 2") | Same                                                                       |
 
 A few element specifics:
 
 - **Headings** announce the text followed by "heading". The **level is dropped entirely** - it is neither spoken nor exposed to platform navigation controls, so VoiceOver's rotor and TalkBack's reading controls jump between headings without distinguishing an H1 from an H4.
 - **Images** with alt text announce it plus "image". An image **without** alt text behaves differently per platform: Android drops the element entirely, while iOS still creates a focusable, unlabeled element, so VoiceOver stops on it, says "image", and lists it in the Images rotor. Supply alt text in the Markdown either way.
-- **Math** on iOS is spoken in English: fractions, roots, powers and indices, sums, products, integrals and limits with their bounds, Greek letters, common relations and functions, decorations, and `\text` are read as words ("integral from 0 to 1 of x squared"), and a command the converter does not know is read by name. Put `{latex}` in `math.equation` to hear the source instead. Android reads the raw LaTeX; `{speech}` falls back to the source there.
+- **Math** is spoken in English: fractions, roots, powers and indices, sums, products, integrals and limits with their bounds, Greek letters, common relations and functions, decorations, and `\text` are read as words ("integral from 0 to 1 of x squared"), and a command the converter does not know is read by name. Put `{latex}` in `math.equation` to hear the source instead.
 
 On iOS, VoiceOver also exposes custom **rotors** for headings, links, and images (a two-finger twist cycles rotors; swipe up/down jumps between elements of that type).
 
@@ -115,7 +115,6 @@ Four sharp edges are worth knowing:
 
 - **macOS** screen-reader support is still pending (a no-op stub ships today); see [macOS support](/react-native/guides/macos).
 - **Android** has no rotor concept, so `accessibilityLabels.rotor.*` is ignored there.
-- **Inline math on Android** carries no accessibility label; only `$$` blocks get the `math.equation` announcement, and the spoken-English conversion behind `{speech}` is iOS-only.
 - **Task list items** have no accessibility handling in the React Native package on either platform: a checkbox is read as plain list text, with no checked state announced and no toggle action exposed. There is no label key for it.
 - **Admonitions** carry no accessibility role; they are announced as the blockquote they are built from.
 - **Code blocks** are covered only partially - under `flavor="github"` the header copy button carries the resolved copy label, and iOS vends a VoiceOver copy action, but the block itself has no dedicated role.

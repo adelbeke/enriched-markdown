@@ -63,7 +63,7 @@ Every field is optional. Any field you omit falls back to the English default be
 
 - `{n}` — 1-based index (list item number, table row index). Substituted at speak time.
 - `{content}` — comma-joined cell texts for a table row.
-- `{speech}` — the formula read in English (iOS; Android substitutes the source).
+- `{speech}` — the formula read in English.
 - `{latex}` — math equation source.
 
 Placeholder names must be preserved in translations exactly. Defaults intentionally use the no-plural cardinal form (`"List item 2"`, `"Row 2"`) instead of ordinals or count-aware variants — a single template works in every language without per-locale plural rules.
@@ -79,7 +79,7 @@ Placeholder names must be preserved in translations exactly. Defaults intentiona
 | **Ordered list items** | "List item N" / "Nested list item N" appended | Same string appended via `roleDescription` |
 | **Blockquote content** | "Blockquote" / "Nested blockquote" appended | Same string appended via `roleDescription` |
 | **Table rows** | One focusable element per row, `"Row N: <cells>"` label, header row carries `UIAccessibilityTraitHeader` | One focusable overlay per row, same template, header row carries `setAccessibilityHeading(true)` |
-| **Math equations** | Own element per formula (inline and block), read in English: `"Math: x squared over 2"` | Math blocks: `"Math: <latex>"` (source read verbatim) |
+| **Math equations** | Own element per formula (inline and block), read in English: `"Math: x squared over 2"` | Same |
 
 ## Architecture
 
@@ -113,7 +113,7 @@ List, blockquote and table row labels are exposed via `accessibilityValue` so Vo
 - List items: `CollectionItemInfoCompat` is set so TalkBack also announces position-in-collection; the localized label is appended via `roleDescription`
 - Blockquote content: localized label appended via `roleDescription` (combined with link/list role when nested)
 - Table rows: one transparent overlay per row exposes the row's joined content via `contentDescription`; header rows additionally call `ViewCompat.setAccessibilityHeading(true)`
-- Math: `MathContainerView` exposes the full equation via `contentDescription` (`math.equation` template; `{speech}` reads the source on Android)
+- Math: `MathContainerView` exposes a block formula via `contentDescription`, and an inline formula is a virtual node of its own; both use the `math.equation` template
 
 ## Element Details
 
@@ -163,7 +163,7 @@ Tables expose one focusable element per row (header included), labeled with the 
 
 ### Math
 
-Each formula exposes a focusable element labeled with the `math.equation` template. On iOS, `{speech}` is an English reading of the LaTeX ("x squared over 2", "integral from 0 to 1 of …"): fractions, roots, powers and indices, big operators with bounds, Greek letters, relations, functions, decorations and `\text` are spoken as words, and a command the converter does not know is read by name; `{latex}` reads the source instead. Android labels math blocks only and substitutes the source for both placeholders.
+Each formula exposes a focusable element labeled with the `math.equation` template. `{speech}` is an English reading of the LaTeX ("x squared over 2", "integral from 0 to 1 of …"): fractions, roots, powers and indices, big operators with bounds, Greek letters, relations, functions, decorations and `\text` are spoken as words, and a command the converter does not know is read by name; `{latex}` reads the source instead.
 
 ## Text input (`EnrichedMarkdownTextInput`)
 
@@ -181,6 +181,5 @@ The editor's accessibility model is intentionally simpler than the renderer's. T
 - **Inline formatting** (bold / italic / underline / strikethrough / inline code / spoiler) is not split into separate accessibility elements — the entire paragraph is read as one element, exactly as the surrounding text. Screen readers don't apply visual emphasis to bold/italic by default.
 - **macOS** screen-reader support is still pending — `MarkdownAccessibilityElementBuilder.m` ships a no-op stub for macOS. Tracked as a TODO; iOS implementation can serve as a reference.
 - **Android** has no rotor concept — `accessibilityLabels.rotor.*` is silently ignored on that platform.
-- **Inline math on Android** carries no accessibility label; only math blocks are announced, and the spoken-English conversion behind `{speech}` is iOS-only.
 - **iOS** blockquote backgrounds may break at link boundaries instead of spanning the full line. Visual only; doesn't affect accessibility.
 - **Text input** (`EnrichedMarkdownTextInput`, iOS) is exposed as a single VoiceOver element reading its full plain text as one paragraph. It is **not** announced with the native "text field" role, has no in-field cursor navigation or per-character echo (editing happens via the keyboard after a double-tap activation), and its spoken value refreshes on re-focus rather than live. Exposing the inner `UITextView` for these would be unreliable under the custom TextKit stack (duplicate/flaky announcements). Inline formatting and headings are read as plain text.

@@ -9,7 +9,7 @@
  *
  * **Placeholder syntax.** Where a label has dynamic content, the default uses
  * `{n}` (count / index, 1-based), `{content}` (resolved cell text or similar),
- * `{speech}` (a formula read in English, iOS) or `{latex}` (math source).
+ * `{speech}` (a formula read in English) or `{latex}` (math source).
  * Translations must preserve the placeholder names exactly — native code
  * substitutes them at speak time.
  *
@@ -69,8 +69,8 @@ export interface AccessibilityLabels {
   /** Labels spoken for math equations. iOS + Android. */
   math?: {
     /**
-     * `{speech}` → the formula read in English ("x squared over 2"; iOS only,
-     * Android reads the source instead), `{latex}` → equation source.
+     * `{speech}` → the formula read in English ("x squared over 2"),
+     * `{latex}` → equation source.
      * @default 'Math: {speech}'
      */
     equation?: string;

@@ -14,6 +14,7 @@ import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import com.swmansion.enriched.markdown.accessibility.AccessibilityLabels
 import com.swmansion.enriched.markdown.math.LatexErrorReporter
+import com.swmansion.enriched.markdown.math.mathLabel
 import com.swmansion.enriched.markdown.spans.MathMeasureHelper
 import com.swmansion.enriched.markdown.spans.MathMeasureRequest
 import com.swmansion.enriched.markdown.spans.MathRenderMode
@@ -111,10 +112,7 @@ class MathContainerView(
   }
 
   private fun updateAccessibilityLabel() {
-    contentDescription =
-      accessibilityLabels.mathEquation
-        .replace("{speech}", cachedLatex)
-        .replace("{latex}", cachedLatex)
+    contentDescription = accessibilityLabels.mathLabel(cachedLatex)
   }
 
   private fun showContextMenu(anchor: View): Boolean {
