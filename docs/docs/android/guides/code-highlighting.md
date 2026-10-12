@@ -5,7 +5,7 @@ sidebar_position: 4
 
 # Code highlighting
 
-Code coloring ships as a **separate artifact**, `code-highlight`, so an app that never shows code does not carry a parser it will not use. It compiles [tree-sitter](https://tree-sitter.github.io/) and 14 grammars into one native library - about 8 MB per ABI as installed, about 1.1 MB per ABI compressed - which is why it is opt-in rather than part of `compose`.
+Code coloring is built on [tree-sitter](https://tree-sitter.github.io/) and 14 bundled grammars. It ships as a **separate artifact**, `code-highlight`, rather than as part of `compose`, so an app that never shows code does not carry a parser it will not use.
 
 Highlighting is **foreground-only**: it recolors tokens and changes nothing else, so a highlighted block measures exactly like a plain one.
 
@@ -20,10 +20,6 @@ dependencies {
 }
 ```
 
-:::note
-The artifact is not on Maven Central yet. It will be published with the next release.
-:::
-
 ## Turning it on
 
 A plugin on the classpath does nothing until it is enabled. Call it as a scope around the part of the tree that should highlight code:
@@ -37,20 +33,28 @@ CodeHighlightPlugin {
 }
 ```
 
-Every `EnrichedMarkdownText` inside the scope highlights code - wrap one screen, or the whole app. `CodeHighlightPlugin { ... }` is shorthand for `MarkdownPlugins(CodeHighlightPlugin) { ... }`; to enable it together with other plugins, list them in one scope: `MarkdownPlugins(LatexMathPlugin, CodeHighlightPlugin) { ... }`. Plugin scopes nest independently of `MarkdownTheme`. To choose the plugins for a single instance, pass them as `EnrichedMarkdownText(plugins = listOf(CodeHighlightPlugin))`.
+Every `EnrichedMarkdownText` inside the scope highlights code, so you can wrap one screen or the whole app.
 
-There is no parser flag. Without the plugin, fenced code renders exactly as before, in the [`codeBlock`](/android/api-reference/style-properties) color.
+`CodeHighlightPlugin { ... }` is shorthand for `MarkdownPlugins(CodeHighlightPlugin) { ... }`. To enable it together with other plugins, list them in one scope:
+
+```kotlin
+MarkdownPlugins(LatexMathPlugin, CodeHighlightPlugin) {
+  EnrichedMarkdownText(markdown = content)
+}
+```
+
+To choose the plugins for a single instance, pass them in the `plugins` parameter:
+
+```kotlin
+EnrichedMarkdownText(
+  markdown = content,
+  plugins = listOf(CodeHighlightPlugin),
+)
+```
 
 ## What gets highlighted
 
-The **language tag on the opening fence** picks the grammar:
-
-````markdown
-```python
-def greet(name):
-    return f"Hi, {name}"
-```
-````
+The **language tag on the opening fence** picks one of the bundled grammars:
 
 | Language | Info strings |
 | --- | --- |
@@ -69,9 +73,7 @@ def greet(name):
 | TypeScript | `typescript`, `ts` |
 | YAML | `yaml`, `yml` |
 
-Info strings match case-insensitively. A block with no tag, or a tag outside the table, renders plain. That includes Kotlin: there is no Kotlin grammar, so a `kotlin` block keeps the code block color.
-
-Highlighting runs with the render, off the main thread. Tokens are cached per block, so a re-render - a style change, or a streamed message growing below its code - does not parse an unchanged block again. A block over 50 KB or 2,000 lines is left plain.
+Info strings match case-insensitively. A block with no tag, or a tag outside the table, renders plain.
 
 ## Colors
 
