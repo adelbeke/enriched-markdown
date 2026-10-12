@@ -6,6 +6,7 @@
 #import "ENRMImageAttachment.h"
 #import "ENRMLatexErrorCoordinator.h"
 #import "ENRMLinkContextMenus.h"
+#import "ENRMLinkRegexProps.h"
 #import "ENRMMarkdownParser.h"
 #import "ENRMTailFadeInAnimator.h"
 #import "ENRMTextInteractionUtils.h"
@@ -104,6 +105,8 @@ static char kENRMSegmentFadeAnimatorKey;
   StyleConfig *_config;
   ENRMMd4cFlags *_md4cFlags;
   BOOL _isGFM;
+  ENRMLinkRegexConfig *_linkRegex;
+  ENRMLinkRegexConfig *_inlineCodeLinkRegex;
   NSString *_cachedMarkdown;
   NSString *_renderedMarkdown;
   ENRMLatexErrorCoordinator *_latexErrorCoordinator;
@@ -182,6 +185,8 @@ static char kENRMSegmentFadeAnimatorKey;
     _parser = [[ENRMMarkdownParser alloc] init];
     _md4cFlags = [EnrichedMarkdown flagsFromProps:defaultProps->md4cFlags];
     _isGFM = defaultProps->isGFM;
+    _linkRegex = ENRMLinkRegexConfigFromProps(defaultProps->linkRecognition.text);
+    _inlineCodeLinkRegex = ENRMLinkRegexConfigFromProps(defaultProps->linkRecognition.inlineCode);
     _segmentViews = [NSMutableArray array];
     _segmentSignatures = [NSMutableArray array];
     __weak __typeof(self) weakLatexSelf = self;
@@ -415,6 +420,12 @@ static char kENRMSegmentFadeAnimatorKey;
     EnrichedMarkdown *strongSelf = weakSelf;
     if (strongSelf && url)
       [strongSelf emitLinkLongPress:url];
+  };
+
+  view.onImagePress = ^(NSString *url, NSString *altText) {
+    EnrichedMarkdown *strongSelf = weakSelf;
+    if (strongSelf && strongSelf->_enableImagePress && url)
+      [strongSelf emitImagePress:url altText:altText];
   };
 
   [view applyBlockquoteNode:blockquoteSegment.blockquoteNode];
@@ -725,6 +736,8 @@ static char kENRMSegmentFadeAnimatorKey;
   ENRMMarkdownParser *parser = _parser;
   ENRMMd4cFlags *md4cFlags = [_md4cFlags copy];
   BOOL isGFM = _isGFM;
+  ENRMLinkRegexConfig *linkRegex = _linkRegex;
+  ENRMLinkRegexConfig *inlineCodeLinkRegex = _inlineCodeLinkRegex;
 
   BOOL allowFontScaling = _fontScaleObserver.allowFontScaling;
   CGFloat maxFontSizeMultiplier = _maxFontSizeMultiplier;
@@ -752,7 +765,11 @@ static char kENRMSegmentFadeAnimatorKey;
           return YES;
         }
 
-        MarkdownASTNode *ast = [parser parseMarkdown:renderableMarkdown flags:md4cFlags isGFM:isGFM];
+        MarkdownASTNode *ast = [parser parseMarkdown:renderableMarkdown
+                                               flags:md4cFlags
+                                               isGFM:isGFM
+                                           linkRegex:linkRegex
+                                 inlineCodeLinkRegex:inlineCodeLinkRegex];
         if (!ast)
           return NO;
 
@@ -777,7 +794,11 @@ static char kENRMSegmentFadeAnimatorKey;
 
 - (NSArray *)parseAndRenderSegments:(NSString *)markdownString
 {
-  MarkdownASTNode *ast = [_parser parseMarkdown:markdownString flags:_md4cFlags isGFM:_isGFM];
+  MarkdownASTNode *ast = [_parser parseMarkdown:markdownString
+                                          flags:_md4cFlags
+                                          isGFM:_isGFM
+                                      linkRegex:_linkRegex
+                            inlineCodeLinkRegex:_inlineCodeLinkRegex];
   if (!ast) {
     return nil;
   }
@@ -977,6 +998,12 @@ static char kENRMSegmentFadeAnimatorKey;
       [strongSelf emitLinkLongPress:url];
   };
 
+  tableView.onImagePress = ^(NSString *url, NSString *altText) {
+    EnrichedMarkdown *strongSelf = weakSelf;
+    if (strongSelf && strongSelf->_enableImagePress && url)
+      [strongSelf emitImagePress:url altText:altText];
+  };
+
   [tableView applyTableNode:tableSegment.tableNode];
 
   return tableView;
@@ -1144,6 +1171,17 @@ static char kENRMSegmentFadeAnimatorKey;
   if (newViewProps.allowTrailingMargin != oldViewProps.allowTrailingMargin) {
     _allowTrailingMargin = newViewProps.allowTrailingMargin;
     _dirtyFlags |= ENRMDirtyRecreateSegments | ENRMDirtyForceHeight | ENRMDirtyRender;
+  }
+
+  if (!ENRMLinkRegexPropsEqual(oldViewProps.linkRecognition.text, newViewProps.linkRecognition.text)) {
+    _linkRegex = ENRMLinkRegexConfigFromProps(newViewProps.linkRecognition.text);
+    _dirtyFlags |= ENRMDirtyRender;
+    _dirtyFlags |= ENRMDirtyForceHeight;
+  }
+  if (!ENRMLinkRegexPropsEqual(oldViewProps.linkRecognition.inlineCode, newViewProps.linkRecognition.inlineCode)) {
+    _inlineCodeLinkRegex = ENRMLinkRegexConfigFromProps(newViewProps.linkRecognition.inlineCode);
+    _dirtyFlags |= ENRMDirtyRender;
+    _dirtyFlags |= ENRMDirtyForceHeight;
   }
 
   if (newViewProps.md4cFlags.underline != oldViewProps.md4cFlags.underline ||
@@ -1338,6 +1376,8 @@ static char kENRMSegmentFadeAnimatorKey;
   _config = nil;
   _md4cFlags = [EnrichedMarkdown flagsFromProps:resetProps->md4cFlags];
   _isGFM = resetProps->isGFM;
+  _linkRegex = ENRMLinkRegexConfigFromProps(resetProps->linkRecognition.text);
+  _inlineCodeLinkRegex = ENRMLinkRegexConfigFromProps(resetProps->linkRecognition.inlineCode);
   _maxFontSizeMultiplier = 0;
   _allowTrailingMargin = NO;
   _streamingAnimation = NO;
