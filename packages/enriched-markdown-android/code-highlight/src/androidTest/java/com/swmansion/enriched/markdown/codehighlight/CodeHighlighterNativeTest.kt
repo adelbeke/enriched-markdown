@@ -118,14 +118,14 @@ class CodeHighlighterNativeTest {
   }
 
   @Test
-  fun unknownLanguageReturnsEmpty() {
+  fun unknownLanguageHasNoTokens() {
     assertTrue(highlight("fun main() {}", "kotlin").isEmpty())
     assertTrue(highlight("x = 1", "no-such-language").isEmpty())
     assertTrue(highlight("x = 1", "").isEmpty())
   }
 
   @Test
-  fun emptyCodeReturnsEmpty() {
+  fun emptyCodeHasNoTokens() {
     assertTrue(highlight("", "python").isEmpty())
   }
 

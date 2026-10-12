@@ -19,7 +19,6 @@ import com.swmansion.enriched.markdown.codehighlight.test.FakeTokenSource.Compan
 import com.swmansion.enriched.markdown.utils.text.conversion.HTMLGenerator
 import com.swmansion.enriched.markdown.utils.text.conversion.MarkdownExtractor
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -39,13 +38,20 @@ class CodeHighlightExportTest {
       blockquote(codeBlock(CODE, LANGUAGE)),
     )
 
+  private val codeBlocksInDoc = 3
+
   private val plain by lazy { render(doc) }
   private val highlighted by lazy { render(doc, plugins = pluginWith(FakeTokenSource())) }
 
   @Test
   fun theHighlightedRenderCarriesTokenSpans() {
     assertEquals(plain.toString(), highlighted.toString())
-    assertTrue(highlighted.getSpans(0, highlighted.length, SyntaxTokenSpan::class.java).size >= 3 * 5)
+
+    // A token without a color in the default style, like an operator, gets no span.
+    val colors = defaultStyle.codeHighlightStyle()
+    val coloredTokensPerBlock = FakeTokenSource.DEFAULT_TOKENS.count { (_, type) -> colors[type] != null }
+    val tokenSpans = highlighted.getSpans(0, highlighted.length, SyntaxTokenSpan::class.java)
+    assertEquals(codeBlocksInDoc * coloredTokensPerBlock, tokenSpans.size)
   }
 
   @Test

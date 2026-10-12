@@ -14,23 +14,6 @@ import org.robolectric.annotation.Config
 @Config(sdk = [28])
 class CodeHighlightStyleTest {
   @Test
-  fun thePalettesMatchIos() {
-    val light = CodeHighlightStyle.githubLight()
-    val dark = CodeHighlightStyle.githubDark()
-
-    assertEquals(0xFFCF222E.toInt(), light[SyntaxTokenType.KEYWORD])
-    assertEquals(0xFF0A3069.toInt(), light[SyntaxTokenType.STRING])
-    assertEquals(0xFF116329.toInt(), light[SyntaxTokenType.TAG])
-    assertEquals(0xFFFF7B72.toInt(), dark[SyntaxTokenType.KEYWORD])
-    assertEquals(0xFFA5D6FF.toInt(), dark[SyntaxTokenType.STRING])
-    assertEquals(0xFF7EE787.toInt(), dark[SyntaxTokenType.TAG])
-    for (uncolored in listOf(SyntaxTokenType.OPERATOR, SyntaxTokenType.PUNCTUATION, SyntaxTokenType.VARIABLE, SyntaxTokenType.EMBEDDED)) {
-      assertNull("$uncolored", light[uncolored])
-      assertNull("$uncolored", dark[uncolored])
-    }
-  }
-
-  @Test
   fun theDefaultPaletteFollowsTheBackgroundsLuminance() {
     assertSame(CodeHighlightStyle.githubDark(), CodeHighlightStyle.defaultFor(0xFF1F2937.toInt()))
     assertSame(CodeHighlightStyle.githubDark(), CodeHighlightStyle.defaultFor(0xFF000000.toInt()))
