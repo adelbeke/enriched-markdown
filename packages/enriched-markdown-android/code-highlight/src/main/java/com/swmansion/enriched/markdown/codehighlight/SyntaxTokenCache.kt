@@ -2,11 +2,16 @@ package com.swmansion.enriched.markdown.codehighlight
 
 import android.util.Log
 import android.util.LruCache
+import java.nio.ByteBuffer
+import java.security.MessageDigest
 
-/** Tokenizes code for a fence language into flat `(start, end, tokenType)` triplets. */
+/**
+ * Tokenizes UTF-8 code for a fence language into flat `(start, end, tokenType)` triplets, with
+ * UTF-16 offsets into the code.
+ */
 internal fun interface SyntaxTokenSource {
   fun tokenize(
-    code: String,
+    code: ByteArray,
     language: String,
   ): IntArray
 }
@@ -17,12 +22,12 @@ internal object NativeSyntaxTokenSource : SyntaxTokenSource {
   private var unavailable = false
 
   override fun tokenize(
-    code: String,
+    code: ByteArray,
     language: String,
   ): IntArray {
     if (unavailable) return EMPTY
     return try {
-      CodeHighlighterNative.highlight(code.toByteArray(Charsets.UTF_8), language)
+      CodeHighlighterNative.highlight(code, language)
     } catch (e: UnsatisfiedLinkError) {
       unavailable = true
       Log.e("CodeHighlighter", "Native library unavailable, code blocks render unhighlighted", e)
@@ -34,9 +39,11 @@ internal object NativeSyntaxTokenSource : SyntaxTokenSource {
 }
 
 /**
- * Tokens by language and code, so re-rendering unchanged markdown - a style change, a streamed
- * message growing below its code - does not parse the block again. Bounded by approximate size in
- * bytes; [android.util.LruCache] synchronizes, so render workers can share one.
+ * Tokens by language and code, so re-rendering an unchanged block does not parse it again: a lazy
+ * list item scrolled back into view, or a configuration or theme change, renders every block anew.
+ * Keyed by a SHA-256 of the language and the code's UTF-8 bytes, so an entry holds its tokens and a
+ * digest rather than a copy of the code; on a miss the same bytes go to the [source]. Bounded by
+ * approximate size in bytes; [android.util.LruCache] synchronizes, so render workers can share one.
  *
  * Two workers missing the same key at once both tokenize it; the result is identical, so the
  * duplicated work is the only cost, and it is cheaper than holding a lock across a parse.
@@ -46,11 +53,13 @@ internal class SyntaxTokenCache(
   maxSizeBytes: Int = DEFAULT_MAX_SIZE_BYTES,
 ) {
   private val cache =
-    object : LruCache<String, IntArray>(maxSizeBytes) {
+    object : LruCache<ByteBuffer, IntArray>(maxSizeBytes) {
+      // The digest is charged too, so blocks without tokens, e.g. in an unknown language, are
+      // still evicted.
       override fun sizeOf(
-        key: String,
+        key: ByteBuffer,
         value: IntArray,
-      ): Int = key.length * Char.SIZE_BYTES + value.size * Int.SIZE_BYTES
+      ): Int = key.capacity() + value.size * Int.SIZE_BYTES
     }
 
   /** Flat `(start, end, tokenType)` triplets with UTF-16 offsets into [code]. */
@@ -58,10 +67,22 @@ internal class SyntaxTokenCache(
     code: String,
     language: String,
   ): IntArray {
-    // A fence language never contains a newline, so the key cannot be ambiguous.
-    val key = "$language\n$code"
+    val bytes = code.toByteArray(Charsets.UTF_8)
+    val key = cacheKey(bytes, language)
     cache.get(key)?.let { return it }
-    return source.tokenize(code, language).also { cache.put(key, it) }
+    return source.tokenize(bytes, language).also { cache.put(key, it) }
+  }
+
+  private fun cacheKey(
+    code: ByteArray,
+    language: String,
+  ): ByteBuffer {
+    val digest = MessageDigest.getInstance("SHA-256")
+    // A fence language never contains a newline, so the digested input cannot be ambiguous.
+    digest.update("$language\n".toByteArray(Charsets.UTF_8))
+    digest.update(code)
+    // ByteBuffer compares and hashes by content, unlike a bare ByteArray.
+    return ByteBuffer.wrap(digest.digest())
   }
 
   companion object {

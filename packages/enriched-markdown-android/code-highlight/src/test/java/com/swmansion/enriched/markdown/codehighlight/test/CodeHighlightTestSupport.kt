@@ -101,11 +101,12 @@ internal class FakeTokenSource(
     private set
 
   override fun tokenize(
-    code: String,
+    code: ByteArray,
     language: String,
   ): IntArray {
     calls++
     if (language != LANGUAGE) return IntArray(0)
+    val code = String(code, Charsets.UTF_8)
     var from = 0
     return tokens
       .flatMap { (text, type) ->

@@ -106,7 +106,7 @@ class CodeHighlightDecoratorTest {
         listOf(
           intArrayOf(0, 3, SyntaxTokenType.KEYWORD.ordinal),
           intArrayOf(4, 9, 99), // no such token type
-          intArrayOf(5, code.length + 10, SyntaxTokenType.STRING.ordinal), // past the code
+          intArrayOf(5, code.size + 10, SyntaxTokenType.STRING.ordinal), // past the code
           intArrayOf(8, 8, SyntaxTokenType.STRING.ordinal), // empty
           intArrayOf(10), // a trailing partial triplet
         ).reduce(IntArray::plus)
