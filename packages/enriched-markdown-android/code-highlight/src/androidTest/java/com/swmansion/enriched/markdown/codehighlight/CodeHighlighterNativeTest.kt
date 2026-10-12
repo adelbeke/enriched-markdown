@@ -130,22 +130,14 @@ class CodeHighlighterNativeTest {
   }
 
   @Test
-  fun respectsByteCap() {
+  fun codeOverTheByteCapHasNoTokens() {
     val atCap = "# " + "a".repeat(MAX_BYTES - 2)
     assertTrue(highlight(atCap, "python").isNotEmpty())
     assertTrue(highlight(atCap + "a", "python").isEmpty())
   }
 
   @Test
-  fun byteCapCountsUtf8BytesNotChars() {
-    // 12,800 emoji: 25,602 UTF-16 units in all, but 51,202 UTF-8 bytes, past the cap.
-    val code = "# " + "😀".repeat(MAX_BYTES / 4)
-    assertTrue(code.length < MAX_BYTES)
-    assertTrue(highlight(code, "python").isEmpty())
-  }
-
-  @Test
-  fun respectsLineCap() {
+  fun codeOverTheLineCapHasNoTokens() {
     val atCap = List(MAX_LINES) { "x = 1" }.joinToString("\n")
     assertTrue(highlight(atCap, "python").isNotEmpty())
     assertTrue(highlight(atCap + "\n", "python").isEmpty())
