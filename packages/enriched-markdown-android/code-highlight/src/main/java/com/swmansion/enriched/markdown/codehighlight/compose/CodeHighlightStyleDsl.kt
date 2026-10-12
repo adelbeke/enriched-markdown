@@ -15,10 +15,6 @@ import com.swmansion.enriched.markdown.plugin.InternalPluginApi
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-/**
- * Pending token colors. A data class, not a lambda: style layers are compared by equality to
- * decide whether Compose has to recompose.
- */
 @Immutable
 internal data class CodeHighlightStylePatch(
   val colors: Map<SyntaxTokenType, Color> = emptyMap(),

@@ -14,7 +14,7 @@ import com.swmansion.enriched.markdown.styles.StyleConfig
  * [SyntaxTokenCache], so render workers can run it concurrently.
  */
 internal class CodeHighlightDecorator(
-  private val tokens: SyntaxTokenCache,
+  private val tokensCache: SyntaxTokenCache,
 ) : CodeBlockDecorator {
   override fun decorate(
     builder: SpannableStringBuilder,
@@ -27,7 +27,7 @@ internal class CodeHighlightDecorator(
     if (language == null || end <= start) return
 
     val code = builder.subSequence(start, end).toString()
-    val triplets = tokens.tokens(code, language)
+    val triplets = tokensCache.tokens(code, language)
     if (triplets.isEmpty()) return
 
     val colors = style.codeHighlightStyle()
