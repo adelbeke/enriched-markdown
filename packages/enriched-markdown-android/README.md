@@ -135,16 +135,22 @@ EnrichedMarkdownText(
 )
 ```
 
-When styles reference `MaterialTheme` tokens, use `rememberMarkdownStyle` so they update with theme changes:
+To color markdown from the Material 3 color scheme, use `rememberMaterialMarkdownStyle`. It rebuilds
+when the scheme changes, so it follows a light/dark switch:
 
 ```kotlin
-MarkdownTheme(
-  style = rememberMarkdownStyle {
-    paragraph { color = MaterialTheme.colorScheme.onSurface }
-    link { color = MaterialTheme.colorScheme.primary }
-  },
-) {
+MarkdownTheme(style = rememberMaterialMarkdownStyle()) {
   Content()
+}
+```
+
+For other values read from composition, read them first and build the style in `remember`, keyed on
+them:
+
+```kotlin
+val colorScheme = MaterialTheme.colorScheme
+val style = remember(colorScheme) {
+  AppMarkdownStyle.merge { link { color = colorScheme.secondary } }
 }
 ```
 
@@ -636,17 +642,23 @@ class MarkdownStyle {
 }
 ```
 
-### `rememberMarkdownStyle`
+### `materialMarkdownStyle` / `rememberMaterialMarkdownStyle`
 
 ```kotlin
+// com.swmansion.enriched.markdown.compose.material3
+fun materialMarkdownStyle(colorScheme: ColorScheme): MarkdownStyle
+
 @Composable
-fun rememberMarkdownStyle(
-  vararg keys: Any?,
-  block: MarkdownStyleBuilder.() -> Unit,
+fun rememberMaterialMarkdownStyle(
+  colorScheme: ColorScheme = MaterialTheme.colorScheme,
 ): MarkdownStyle
 ```
 
-Creates a style that tracks `MaterialTheme.colorScheme` changes. Use inside `MaterialTheme { }`.
+Builds a style colored from a Material 3 `ColorScheme`; the `remember` variant rebuilds it when the
+scheme changes. Only colors come from the scheme. Plugin styles are not set.
+
+`rememberMarkdownStyle { }` is deprecated: its block is not composable, so it cannot read
+`MaterialTheme`. Use `rememberMaterialMarkdownStyle()` or `remember(keys) { markdownStyle { } }`.
 
 `TextAlign.Unspecified` keeps the inherited alignment.
 
