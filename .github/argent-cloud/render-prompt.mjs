@@ -18,7 +18,8 @@
 //
 // Usage:
 //   node render-prompt.mjs --template <f> --pr-context <f> --out <f>
-//                          [--operator <f>] [--build-type release|debug]
+//                          [--operator <f>] [--diff <f>]
+//                          [--build-type release|debug]
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -26,10 +27,15 @@ import { dirname } from 'node:path';
 const TITLE_LIMIT = 300;
 const BODY_LIMIT = 4000;
 const FOCUS_LIMIT = 1000;
+// The diff is the agent's only view of the source, so it gets the largest
+// budget by far. Measured against this repository's history, 60k covers a
+// typical native change whole and clips only the largest refactors - and the
+// stat header is emitted first, so a clipped diff still lists every file.
+const DIFF_LIMIT = 60000;
 
 /** Reads `--flag value` pairs, rejecting anything unrecognised. */
 function parseArgs(argv) {
-  const known = ['template', 'pr-context', 'operator', 'build-type', 'out'];
+  const known = ['template', 'pr-context', 'operator', 'diff', 'build-type', 'out'];
   const args = {};
   for (let i = 0; i < argv.length; i += 2) {
     const flag = argv[i].replace(/^--/, '');
@@ -134,16 +140,24 @@ if (args.operator) {
   }
 }
 
+// Unreadable rather than absent is a bug in the workflow, not an empty diff:
+// a missing --diff drops the section, but a --diff that cannot be read would
+// silently ship a prompt with no source view at all.
+let diff = '';
+if (args.diff) {
+  try {
+    diff = truncate(scrub(readFileSync(args.diff, 'utf8')).trim(), DIFF_LIMIT);
+  } catch (error) {
+    fail(`could not read ${args.diff}: ${error.message}`);
+  }
+}
+
 const title = truncate(scrub(pr.title).trim(), TITLE_LIMIT) || '(no title)';
 const body = truncate(scrub(pr.body).trim(), BODY_LIMIT) || '(no description)';
 const focus = truncate(scrub(operator.focus).trim(), FOCUS_LIMIT);
 
 const number = String(pr.number ?? '').replace(/[^0-9]/g, '') || 'unknown';
 const head = String(pr.headRefOid ?? '').replace(/[^0-9a-f]/g, '') || 'unknown';
-const url = /^https:\/\/github\.com\/[A-Za-z0-9._\/-]+$/.test(String(pr.url ?? ''))
-  ? pr.url
-  : 'unknown';
-
 let template;
 try {
   template = readFileSync(args.template, 'utf8');
@@ -153,23 +167,28 @@ try {
 
 template = applyRegion(template, 'IF_DEBUG_BUILD', buildType === 'debug');
 template = applyRegion(template, 'IF_FOCUS', focus !== '');
+template = applyRegion(template, 'IF_DIFF', diff !== '');
 
 const values = {
   PR_NUMBER: number,
-  PR_URL: url,
   PR_HEAD: head,
   PR_TITLE_BLOCK: fence(title),
   PR_BODY_BLOCK: fence(body, 'markdown'),
+  PR_DIFF_BLOCK: fence(diff, 'diff'),
   FOCUS_BLOCK: fence(focus),
 };
 
 const { rendered, seen } = substitute(template, values);
 
 // A template edit that drops a placeholder would quietly ship a prompt with a
-// hole in it, so an unused token is an error rather than a warning. FOCUS_BLOCK
-// is exempt: its whole region is dropped when no focus was given.
+// hole in it, so an unused token is an error rather than a warning. The two
+// block tokens whose regions are conditional are exempt exactly when their
+// region was dropped.
+const optional = new Set();
+if (focus === '') optional.add('FOCUS_BLOCK');
+if (diff === '') optional.add('PR_DIFF_BLOCK');
 for (const key of Object.keys(values)) {
-  if (!seen.has(key) && !(key === 'FOCUS_BLOCK' && focus === '')) {
+  if (!seen.has(key) && !optional.has(key)) {
     fail(`the template never uses {{${key}}}; the prompt would be missing it`);
   }
 }
@@ -179,6 +198,7 @@ writeFileSync(args.out, rendered);
 
 console.log(
   `Rendered ${args.out} for #${number} (${buildType} build, ` +
-    `${title.length} char title, ${body.length} char body` +
+    `${title.length} char title, ${body.length} char body, ` +
+    `${diff ? `${diff.length} char diff` : 'no diff'}` +
     `${focus ? ', with a focus note' : ''}).`
 );

@@ -89,6 +89,7 @@ jobs:
           NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pull_request }}
           BODY: ${{ github.event.comment.body }}
           COMMIT: ${{ inputs.commit }}
+          FOCUS_INPUT: ${{ inputs.focus }}
         run: |
           set -euo pipefail
           refuse() {
@@ -99,29 +100,70 @@ jobs:
             exit 1
           }
 
-          # `/argent [commit]`, on the first line of the comment. The trigger
-          # above matches a prefix, so `/argentina` reaches this point and has to
-          # be refused by name here.
+          # `/argent [<SHA>] [note]`, with the note running to the end of the
+          # comment. The trigger above matches a prefix, so `/argentina` reaches
+          # this point and has to be refused by name here.
           REQUESTED=$COMMIT
+          FOCUS_TEXT=${FOCUS_INPUT:-}
           if [[ "$EVENT" == issue_comment ]]; then
-            read -r COMMAND REQUESTED _ <<< "$(head -n 1 <<< "$BODY" | tr -d '\r')"
+            FIRST=$(head -n 1 <<< "$BODY" | tr -d '\r')
+            read -r COMMAND REST <<< "$FIRST"
             if [[ "$COMMAND" != "/argent" ]]; then
-              echo "::error::'$COMMAND' is not the Argent Cloud command; it is \`/argent [<SHA>]\`"
+              echo "::error::'$COMMAND' is not the Argent Cloud command; it is \`/argent [<SHA>] [note]\`"
               exit 1
+            fi
+            # The second word is a commit only if it is shaped like one. Anything
+            # else is the start of the note, so `/argent check the tables` works
+            # rather than being refused for not being a SHA - but something that
+            # is clearly a shortened SHA is still refused, because silently
+            # reading it as a note is how a fork gets driven at an unreviewed
+            # head.
+            read -r MAYBE_SHA REST_AFTER <<< "${REST:-}"
+            if [[ "${MAYBE_SHA:-}" =~ ^[0-9a-f]{40}$ ]]; then
+              REQUESTED=$MAYBE_SHA
+              FOCUS_TEXT=${REST_AFTER:-}
+            elif [[ "${MAYBE_SHA:-}" =~ ^[0-9a-f]{7,39}$ ]]; then
+              refuse "\`$MAYBE_SHA\` is not a full commit SHA. Name the commit with all 40 characters, as in \`/argent <SHA>\`."
+            else
+              REQUESTED=
+              FOCUS_TEXT=${REST:-}
+            fi
+            # Every line after the first belongs to the note too.
+            TAIL=$(tail -n +2 <<< "$BODY" | tr -d '\r')
+            if [[ -n "${TAIL//[$'\n\t ']/}" ]]; then
+              FOCUS_TEXT="${FOCUS_TEXT:+$FOCUS_TEXT$'\n'}$TAIL"
             fi
           fi
           REQUESTED=${REQUESTED:-}
+
           if [[ -n "$REQUESTED" && ! "$REQUESTED" =~ ^[0-9a-f]{40}$ ]]; then
             refuse "Name the commit with its full 40-character SHA, as in \`/argent <SHA>\`."
           fi
 
-          PR=$(gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json headRefOid,isCrossRepository \
-            --jq '"\(.headRefOid) \(.isCrossRepository)"')
-          HEAD=${PR% *}
-          FORK=${PR#* }
-          BASE=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
-          if [[ -z "$HEAD" || -z "$BASE" ]]; then
-            echo "::error::Could not resolve the head of pull request #$NUMBER or the tip of main"
+          # Written to a file rather than carried in a job output: the note is
+          # multi-line, and a multi-line output needs a delimiter its author
+          # could otherwise forge.
+          printf '%s' "$FOCUS_TEXT" > "$RUNNER_TEMP/focus.txt"
+
+          # The base is the commit the pull request targets, not the tip of main,
+          # and it is where every job takes its tooling from. The two coincide
+          # for an ordinary pull request; they differ for a stacked one, and
+          # taking the real base is what lets a pull request that changes this
+          # workflow be tested by a pull request stacked on top of it.
+          #
+          # It therefore matters that a base branch is only writable by someone
+          # with write access to this repository - the same gate the permission
+          # check above applies, and the same one that already decides who may
+          # spend the budget and run code in Argent's sandbox. A fork's pull
+          # request cannot point this anywhere but a branch of ours.
+          PR=$(gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --json headRefOid,isCrossRepository,baseRefOid \
+            --jq '"\(.headRefOid) \(.isCrossRepository) \(.baseRefOid)"')
+          read -r HEAD FORK BASE <<< "$PR"
+          # Both become checkout refs below, so both are checked for shape here
+          # rather than merely for emptiness.
+          if [[ ! "${HEAD:-}" =~ ^[0-9a-f]{40}$ || ! "${BASE:-}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve the head and base commits of pull request #$NUMBER"
             exit 1
           fi
           if [[ -z "$REQUESTED" && "$FORK" == true ]]; then
@@ -163,14 +205,33 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ steps.pr.outputs.number }}
-          FOCUS: ${{ inputs.focus }}
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/context"
           gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" \
             --json number,title,body,url,isDraft,headRefOid \
             > "$RUNNER_TEMP/context/pr-context.json"
-          jq -n --arg focus "${FOCUS:-}" '{focus: $focus}' > "$RUNNER_TEMP/context/operator.json"
+          jq -n --rawfile focus "$RUNNER_TEMP/focus.txt" '{focus: $focus}' \
+            > "$RUNNER_TEMP/context/operator.json"
+
+          # The agent cannot read the repository - it has a simulator and no
+          # egress - so the diff is its only view of what changed, and without it
+          # the agent is guessing which screens to open from the title alone.
+          # Fetched through the API rather than from a checkout, so this job still
+          # holds no pull request code alongside its write token; the cost is the
+          # API's fixed three lines of hunk context.
+          #
+          # The stat is written first because the renderer truncates from the end:
+          # a diff too long to fit still arrives with a complete list of the files
+          # it covers. `git apply --stat` parses the patch already on disk and
+          # needs no repository, which is why it is used instead of a second call.
+          gh pr diff "$NUMBER" --repo "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/pr.patch"
+          {
+            git apply --stat "$RUNNER_TEMP/pr.patch" 2>/dev/null \
+              || echo "(the file list could not be parsed from the diff)"
+            echo
+            cat "$RUNNER_TEMP/pr.patch"
+          } > "$RUNNER_TEMP/context/diff.txt"
 
       - name: Upload the pull request text
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -390,6 +451,7 @@ jobs:
             --template .github/argent-cloud/prompt.md \
             --pr-context "$RUNNER_TEMP/context/pr-context.json" \
             --operator "$RUNNER_TEMP/context/operator.json" \
+            --diff "$RUNNER_TEMP/context/diff.txt" \
             --build-type release \
             --out "$RUNNER_TEMP/argent/prompt.md"
 
@@ -515,7 +577,7 @@ jobs:
     steps:
       - name: Post the result to Slack
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.ARGENT_CI_SLACK_WEBHOOK_URL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           PR_URL: ${{ needs.resolve.outputs.url }}
           NUMBER: ${{ needs.resolve.outputs.number }}
