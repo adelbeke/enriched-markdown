@@ -119,13 +119,10 @@ class CodeBlockDecoratorTest {
     assertEquals(TOKEN_COLOR, drawColorAt(rendered, rendered.indexOf("val")))
   }
 
-  /**
-   * A list item's span is set after its children and repaints colors it does not preserve; it
-   * moves a [PreservedColorSpan] after itself, at every depth, so the token keeps its color.
-   */
+  /** A list item's span is a priority span too, at every depth, so the token keeps its color. */
   @Test
-  fun aPreservedTokenColorSurvivesInAListItem() {
-    val decorator = RecordingDecorator(tokenColor = TOKEN_COLOR, preserved = true)
+  fun aTokenColorSurvivesInAListItem() {
+    val decorator = RecordingDecorator(tokenColor = TOKEN_COLOR)
 
     val rendered =
       render(
@@ -138,17 +135,8 @@ class CodeBlockDecoratorTest {
 
     assertEquals(TOKEN_COLOR, drawColorAt(rendered, rendered.indexOf("val")))
     assertEquals(TOKEN_COLOR, drawColorAt(rendered, rendered.indexOf("var")))
-  }
-
-  /** An unmarked color is still repainted: the list item only moves spans that opted in. */
-  @Test
-  fun anUnmarkedTokenColorTakesTheListColor() {
-    val decorator = RecordingDecorator(tokenColor = TOKEN_COLOR)
-
-    val rendered =
-      render(document(unorderedList(listItem(codeBlock(CODE, "kotlin")))), plugins = PluginSnapshot.of(DecoratingPlugin(decorator)))
-
-    assertEquals(defaultStyle.listStyle.color, drawColorAt(rendered, rendered.indexOf("val")))
+    // Outside the token the block's own color applies, not the list's.
+    assertEquals(defaultStyle.codeBlockStyle.color, drawColorAt(rendered, rendered.indexOf("println")))
   }
 
   /**
@@ -252,13 +240,9 @@ class CodeBlockDecoratorTest {
     val language: String?,
   )
 
-  /**
-   * Records each call; with a [tokenColor], colors the first word of the block like a keyword,
-   * through a [PreservedColorSpan] when [preserved] is set.
-   */
+  /** Records each call; with a [tokenColor], colors the first word of the block like a keyword. */
   private class RecordingDecorator(
     private val tokenColor: Int? = null,
-    private val preserved: Boolean = false,
   ) : CodeBlockDecorator {
     val calls = mutableListOf<Decorated>()
     var lastStyle: StyleConfig? = null
@@ -281,16 +265,10 @@ class CodeBlockDecoratorTest {
       lastStyle = style
       if (tokenColor != null) {
         val wordEnd = builder.indexOf(' ', start)
-        val span = if (preserved) PreservedTokenSpan(tokenColor) else ForegroundColorSpan(tokenColor)
-        builder.setSpan(span, start, wordEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        builder.setSpan(ForegroundColorSpan(tokenColor), start, wordEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
       }
     }
   }
-
-  private class PreservedTokenSpan(
-    color: Int,
-  ) : ForegroundColorSpan(color),
-    PreservedColorSpan
 
   private class DecoratingPlugin(
     private val decorator: CodeBlockDecorator,
