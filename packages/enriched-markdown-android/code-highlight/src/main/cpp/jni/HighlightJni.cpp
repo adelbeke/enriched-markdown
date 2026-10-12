@@ -10,8 +10,9 @@ using namespace Markdown;
 
 namespace {
 
-// Token types cross JNI as their integer value, and the Kotlin side indexes by it. Pin the order
-// and count here so a change to the seam's enum fails the build instead of recoloring tokens.
+// Token types cross JNI as their integer value, and Kotlin's SyntaxTokenType is indexed by it. Pin
+// the order and count here so a change to the seam's enum fails the build instead of recoloring
+// tokens.
 constexpr HighlightTokenType kTokenTypeOrder[] = {
     HighlightTokenType::Keyword,   HighlightTokenType::Operator, HighlightTokenType::Punctuation,
     HighlightTokenType::String,    HighlightTokenType::Number,   HighlightTokenType::Constant,
@@ -30,8 +31,8 @@ constexpr bool tokenTypeOrderMatches() {
 }
 
 static_assert(sizeof(kTokenTypeOrder) / sizeof(kTokenTypeOrder[0]) == 14,
-              "HighlightTokenType count changed; Kotlin indexes token types by value");
-static_assert(tokenTypeOrderMatches(), "HighlightTokenType order changed; Kotlin indexes token types by value");
+              "HighlightTokenType count changed; update SyntaxTokenType.kt to match");
+static_assert(tokenTypeOrderMatches(), "HighlightTokenType order changed; update SyntaxTokenType.kt to match");
 
 jintArray emptyArray(JNIEnv *env) {
   return env->NewIntArray(0);
