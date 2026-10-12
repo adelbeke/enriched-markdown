@@ -3,7 +3,6 @@ package com.swmansion.enriched.markdown.codehighlight
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.swmansion.enriched.markdown.codehighlight.test.CodeHighlightTestSupport.defaultStyle
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -31,10 +30,7 @@ class CodeHighlightStyleTest {
 
   @Test
   fun explicitColorsWinAndUnsetOnesFallBackToThePalette() {
-    val explicit =
-      CodeHighlightStyle()
-        .with(SyntaxTokenType.KEYWORD, RED)
-        .with(SyntaxTokenType.OPERATOR, RED)
+    val explicit = CodeHighlightStyle(keyword = RED, operator = RED)
 
     val resolved = defaultStyle.withExtension(CodeHighlightStyleKey, explicit).codeHighlightStyle()
 
@@ -46,17 +42,12 @@ class CodeHighlightStyleTest {
   }
 
   @Test
-  fun withCopiesAndNullUnsets() {
-    val base = CodeHighlightStyle.githubLight()
+  fun getReadsTheFieldForEachTokenType() {
+    val style = CodeHighlightStyle.of { it.ordinal }
 
-    val changed = base.with(SyntaxTokenType.KEYWORD, RED)
-
-    assertEquals(0xFFCF222E.toInt(), base[SyntaxTokenType.KEYWORD])
-    assertEquals(RED, changed[SyntaxTokenType.KEYWORD])
-    assertNull(changed.with(SyntaxTokenType.KEYWORD, null)[SyntaxTokenType.KEYWORD])
-    assertNotEquals(base, changed)
-    assertEquals(base, changed.with(SyntaxTokenType.KEYWORD, 0xFFCF222E.toInt()))
-    assertEquals(base.hashCode(), changed.with(SyntaxTokenType.KEYWORD, 0xFFCF222E.toInt()).hashCode())
+    for (type in SyntaxTokenType.entries) {
+      assertEquals("$type", type.ordinal, style[type])
+    }
   }
 
   private companion object {

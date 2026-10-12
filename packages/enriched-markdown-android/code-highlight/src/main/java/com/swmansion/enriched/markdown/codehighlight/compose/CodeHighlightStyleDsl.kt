@@ -22,10 +22,12 @@ internal data class CodeHighlightStylePatch(
   override fun apply(
     base: CodeHighlightStyle?,
     units: PluginStyleUnits,
-  ): CodeHighlightStyle =
+  ): CodeHighlightStyle {
+    val patched = CodeHighlightStyle.of { type -> colors[type]?.let(units::argb) }
     // No base starts from an empty style, not a palette: the palette depends on the code block's
     // background, which is only known once the whole style has resolved.
-    colors.entries.fold(base ?: CodeHighlightStyle()) { style, (type, color) -> style.with(type, units.argb(color)) }
+    return if (base == null) patched else patched.over(base)
+  }
 }
 
 /**
