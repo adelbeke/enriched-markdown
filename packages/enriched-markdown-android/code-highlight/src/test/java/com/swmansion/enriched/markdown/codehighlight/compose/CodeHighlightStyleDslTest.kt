@@ -95,9 +95,9 @@ class CodeHighlightStyleDslTest {
     assertEquals(0xFF22863A.toInt(), stored[SyntaxTokenType.TAG])
   }
 
-  /** The palette under DSL colors follows the code block background the same style resolves. */
+  /** The default palette does not follow the code block background, so a light block keeps it too. */
   @Test
-  fun aLightCodeBlockGetsTheLightPaletteUnderTheDslColors() {
+  fun dslColorsLayOverTheDefaultPalette() {
     val style =
       markdownStyle {
         codeBlock { backgroundColor = Color(0xFFF6F8FA) }
@@ -106,16 +106,15 @@ class CodeHighlightStyleDslTest {
 
     val resolved = resolveConfig(style).codeHighlightStyle()
 
-    assertEquals(0xFF7C3AED.toInt(), resolved[SyntaxTokenType.KEYWORD])
-    assertEquals(CodeHighlightStyle.githubLight()[SyntaxTokenType.STRING], resolved[SyntaxTokenType.STRING])
+    assertEquals(CodeHighlightStyle.Default.copy(keyword = 0xFF7C3AED.toInt()), resolved)
   }
 
   @Test
-  fun anEmptyStyleReadsAsTheDarkPaletteOnCoresDefaultBlock() {
+  fun anEmptyStyleReadsAsTheDefaultPalette() {
     val resolved = resolveConfig(MarkdownStyle.Default)
 
     assertNull(resolved[CodeHighlightStyleKey])
-    assertEquals(CodeHighlightStyle.githubDark(), resolved.codeHighlightStyle())
+    assertEquals(CodeHighlightStyle.Default, resolved.codeHighlightStyle())
   }
 
   private fun resolveConfig(style: MarkdownStyle): StyleConfig = style.resolveStyleConfig(context, Density(density = 2f, fontScale = 1f))

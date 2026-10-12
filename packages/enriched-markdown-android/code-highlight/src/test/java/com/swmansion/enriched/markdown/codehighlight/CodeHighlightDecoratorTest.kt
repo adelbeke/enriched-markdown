@@ -28,20 +28,19 @@ import org.robolectric.annotation.Config
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [28])
 class CodeHighlightDecoratorTest {
-  /** Core's default code block is dark, so the dark palette applies. */
   @Test
   fun eachColoredTokenGetsOneSpanInThePalettesColor() {
     val rendered = render(document(paragraph(text("before")), codeBlock(CODE, LANGUAGE)), plugins = pluginWith(FakeTokenSource()))
 
-    val dark = CodeHighlightStyle.githubDark()
+    val palette = CodeHighlightStyle.Default
     assertEquals(
       listOf(
-        Token("def", SyntaxTokenType.KEYWORD, dark[SyntaxTokenType.KEYWORD]),
-        Token("greet", SyntaxTokenType.FUNCTION, dark[SyntaxTokenType.FUNCTION]),
-        Token("return", SyntaxTokenType.KEYWORD, dark[SyntaxTokenType.KEYWORD]),
-        Token("\"hi \"", SyntaxTokenType.STRING, dark[SyntaxTokenType.STRING]),
+        Token("def", SyntaxTokenType.KEYWORD, palette[SyntaxTokenType.KEYWORD]),
+        Token("greet", SyntaxTokenType.FUNCTION, palette[SyntaxTokenType.FUNCTION]),
+        Token("return", SyntaxTokenType.KEYWORD, palette[SyntaxTokenType.KEYWORD]),
+        Token("\"hi \"", SyntaxTokenType.STRING, palette[SyntaxTokenType.STRING]),
         // `+` is an operator, which the palette leaves uncolored, so it gets no span at all.
-        Token("# say hi", SyntaxTokenType.COMMENT, dark[SyntaxTokenType.COMMENT]),
+        Token("# say hi", SyntaxTokenType.COMMENT, palette[SyntaxTokenType.COMMENT]),
       ),
       rendered.tokens(),
     )
@@ -54,7 +53,7 @@ class CodeHighlightDecoratorTest {
   fun tokenColorsDrawOverTheBlocksTextColor() {
     val rendered = render(document(codeBlock(CODE, LANGUAGE)), plugins = pluginWith(FakeTokenSource()))
 
-    assertEquals(CodeHighlightStyle.githubDark()[SyntaxTokenType.KEYWORD], drawColorAt(rendered, rendered.indexOf("def")))
+    assertEquals(CodeHighlightStyle.Default[SyntaxTokenType.KEYWORD], drawColorAt(rendered, rendered.indexOf("def")))
     assertEquals(defaultStyle.codeBlockStyle.color, drawColorAt(rendered, rendered.indexOf("name")))
   }
 
@@ -63,7 +62,7 @@ class CodeHighlightDecoratorTest {
   fun tokenColorsSurviveInAListItem() {
     val rendered = render(document(unorderedList(listItem(codeBlock(CODE, LANGUAGE)))), plugins = pluginWith(FakeTokenSource()))
 
-    assertEquals(CodeHighlightStyle.githubDark()[SyntaxTokenType.KEYWORD], drawColorAt(rendered, rendered.indexOf("def")))
+    assertEquals(CodeHighlightStyle.Default[SyntaxTokenType.KEYWORD], drawColorAt(rendered, rendered.indexOf("def")))
   }
 
   @Test
@@ -115,7 +114,7 @@ class CodeHighlightDecoratorTest {
     val rendered = render(document(codeBlock(CODE, LANGUAGE)), plugins = pluginWith(source))
 
     assertEquals(
-      listOf(Token("def", SyntaxTokenType.KEYWORD, CodeHighlightStyle.githubDark()[SyntaxTokenType.KEYWORD])),
+      listOf(Token("def", SyntaxTokenType.KEYWORD, CodeHighlightStyle.Default[SyntaxTokenType.KEYWORD])),
       rendered.tokens(),
     )
   }

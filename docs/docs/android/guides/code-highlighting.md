@@ -80,19 +80,21 @@ Info strings match case-insensitively. A block with no tag, or a tag outside the
 Each of the 14 token types takes its color from the first of:
 
 1. a color you set;
-2. GitHub's palette - dark when the `codeBlock` `backgroundColor` is dark, light otherwise. The default code block is dark, so it gets the dark palette;
+2. GitHub's dark palette, made for the default dark code block;
 3. the `codeBlock` color. Operators, punctuation, variables, and embedded code have no palette color, so they land here unless you set one.
 
-| Token | Dark palette | Light palette |
-| --- | --- | --- |
-| `keyword` | `#FF7B72` | `#CF222E` |
-| `string` | `#A5D6FF` | `#0A3069` |
-| `number`, `constant`, `property`, `attribute` | `#79C0FF` | `#0550AE` |
-| `comment` | `#8B949E` | `#6E7781` |
-| `function` | `#D2A8FF` | `#8250DF` |
-| `type` | `#FFA657` | `#953800` |
-| `tag` | `#7EE787` | `#116329` |
-| `operator`, `punctuation`, `variable`, `embedded` | `codeBlock` color | `codeBlock` color |
+| Token | Default |
+| --- | --- |
+| `keyword` | `#FF7B72` |
+| `string` | `#A5D6FF` |
+| `number`, `constant`, `property`, `attribute` | `#79C0FF` |
+| `comment` | `#8B949E` |
+| `function` | `#D2A8FF` |
+| `type` | `#FFA657` |
+| `tag` | `#7EE787` |
+| `operator`, `punctuation`, `variable`, `embedded` | `codeBlock` color |
+
+The palette does not change with the code block's background. If you give `codeBlock` a light `backgroundColor`, set the token colors too.
 
 Set colors with the `codeHighlight` block. It is an extension function shipped by the artifact, so it needs an import:
 

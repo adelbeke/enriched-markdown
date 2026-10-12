@@ -4,7 +4,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.swmansion.enriched.markdown.codehighlight.test.CodeHighlightTestSupport.defaultStyle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertSame
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -13,19 +12,8 @@ import org.robolectric.annotation.Config
 @Config(sdk = [28])
 class CodeHighlightStyleTest {
   @Test
-  fun theDefaultPaletteFollowsTheBackgroundsLuminance() {
-    assertSame(CodeHighlightStyle.githubDark(), CodeHighlightStyle.defaultFor(0xFF1F2937.toInt()))
-    assertSame(CodeHighlightStyle.githubDark(), CodeHighlightStyle.defaultFor(0xFF000000.toInt()))
-    assertSame(CodeHighlightStyle.githubLight(), CodeHighlightStyle.defaultFor(0xFFF6F8FA.toInt()))
-    assertSame(CodeHighlightStyle.githubLight(), CodeHighlightStyle.defaultFor(0xFFFFFFFF.toInt()))
-    // Nothing to judge through a transparent background.
-    assertSame(CodeHighlightStyle.githubLight(), CodeHighlightStyle.defaultFor(0x00000000))
-  }
-
-  /** Core's default code block is dark. */
-  @Test
-  fun withNoExplicitStyleTheDefaultBlockGetsTheDarkPalette() {
-    assertEquals(CodeHighlightStyle.githubDark(), defaultStyle.codeHighlightStyle())
+  fun withNoExplicitStyleTheDefaultPaletteApplies() {
+    assertEquals(CodeHighlightStyle.Default, defaultStyle.codeHighlightStyle())
   }
 
   @Test
@@ -36,7 +24,7 @@ class CodeHighlightStyleTest {
 
     assertEquals(RED, resolved[SyntaxTokenType.KEYWORD])
     assertEquals(RED, resolved[SyntaxTokenType.OPERATOR])
-    assertEquals(CodeHighlightStyle.githubDark()[SyntaxTokenType.STRING], resolved[SyntaxTokenType.STRING])
+    assertEquals(CodeHighlightStyle.Default[SyntaxTokenType.STRING], resolved[SyntaxTokenType.STRING])
     // Unset in both: the block's own color.
     assertNull(resolved[SyntaxTokenType.PUNCTUATION])
   }

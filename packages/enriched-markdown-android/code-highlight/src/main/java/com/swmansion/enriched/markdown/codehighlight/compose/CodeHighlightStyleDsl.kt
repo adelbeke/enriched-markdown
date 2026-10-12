@@ -24,15 +24,14 @@ internal data class CodeHighlightStylePatch(
     units: PluginStyleUnits,
   ): CodeHighlightStyle {
     val patched = CodeHighlightStyle.of { type -> colors[type]?.let(units::argb) }
-    // No base starts from an empty style, not a palette: the palette depends on the code block's
-    // background, which is only known once the whole style has resolved.
+    // No base starts from an empty style: codeHighlightStyle() lays the default palette under it.
     return if (base == null) patched else patched.over(base)
   }
 }
 
 /**
- * Token colors for highlighted code blocks. A token left null takes the default palette's color,
- * GitHub's light or dark one by the code block's background; see [CodeHighlightStyle].
+ * Token colors for highlighted code blocks. A token left null takes the default palette's color;
+ * see [CodeHighlightStyle.Default].
  */
 @MarkdownStyleDsl
 class CodeHighlightStyleScope internal constructor(

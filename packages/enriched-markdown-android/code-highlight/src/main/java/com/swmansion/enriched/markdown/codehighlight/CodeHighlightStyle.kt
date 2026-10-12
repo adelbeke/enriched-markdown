@@ -1,6 +1,5 @@
 package com.swmansion.enriched.markdown.codehighlight
 
-import android.graphics.Color
 import com.swmansion.enriched.markdown.styles.StyleConfig
 import com.swmansion.enriched.markdown.styles.StyleExtensionKey
 
@@ -8,9 +7,8 @@ import com.swmansion.enriched.markdown.styles.StyleExtensionKey
  * Per-token foreground colors for highlighted code blocks, as ARGB. A type without a color keeps
  * the code block's own text color.
  *
- * A style stored under [CodeHighlightStyleKey] is laid over the default palette rather than
- * replacing it, as on iOS: its colors win, and a type it leaves null takes the palette's color.
- * The palette is [githubDark] on a dark code block background and [githubLight] otherwise.
+ * A style stored under [CodeHighlightStyleKey] is laid over [Default] rather than replacing it,
+ * as on iOS: its colors win, and a type it leaves null takes the default's color.
  */
 data class CodeHighlightStyle(
   val keyword: Int? = null,
@@ -51,23 +49,12 @@ data class CodeHighlightStyle(
   fun over(fallback: CodeHighlightStyle): CodeHighlightStyle = of { this[it] ?: fallback[it] }
 
   companion object {
-    // GitHub's palettes, the same values iOS uses. Operators, punctuation, variables and embedded
-    // code have no color of their own in either and keep the block's.
-    private val GITHUB_LIGHT =
-      CodeHighlightStyle(
-        keyword = opaque(0xCF222E),
-        string = opaque(0x0A3069),
-        number = opaque(0x0550AE),
-        constant = opaque(0x0550AE),
-        comment = opaque(0x6E7781),
-        function = opaque(0x8250DF),
-        type = opaque(0x953800),
-        property = opaque(0x0550AE),
-        tag = opaque(0x116329),
-        attribute = opaque(0x0550AE),
-      )
-
-    private val GITHUB_DARK =
+    /**
+     * GitHub's dark palette, made for the default dark code block. Operators, punctuation,
+     * variables and embedded code have no color of their own and keep the block's. On a light code
+     * block background, set the colors yourself.
+     */
+    val Default =
       CodeHighlightStyle(
         keyword = opaque(0xFF7B72),
         string = opaque(0xA5D6FF),
@@ -80,20 +67,6 @@ data class CodeHighlightStyle(
         tag = opaque(0x7EE787),
         attribute = opaque(0x79C0FF),
       )
-
-    /** GitHub's light palette, for code on a light background. */
-    fun githubLight(): CodeHighlightStyle = GITHUB_LIGHT
-
-    /** GitHub's dark palette, for code on a dark background. */
-    fun githubDark(): CodeHighlightStyle = GITHUB_DARK
-
-    /**
-     * [githubDark] when white text contrasts with [backgroundColor] more than black text does,
-     * [githubLight] otherwise. Alpha is ignored except that a fully transparent background, which
-     * says nothing about what shows through it, gets the light palette.
-     */
-    fun defaultFor(backgroundColor: Int): CodeHighlightStyle =
-      if (Color.alpha(backgroundColor) != 0 && Color.luminance(backgroundColor) < DARK_LUMINANCE) GITHUB_DARK else GITHUB_LIGHT
 
     /** A style with [color]'s result for every token type. */
     internal fun of(color: (SyntaxTokenType) -> Int?): CodeHighlightStyle =
@@ -114,10 +87,6 @@ data class CodeHighlightStyle(
         embedded = color(SyntaxTokenType.EMBEDDED),
       )
 
-    // Relative luminance at which black and white text have equal WCAG contrast:
-    // (L + 0.05) / 0.05 == 1.05 / (L + 0.05).
-    private const val DARK_LUMINANCE = 0.179f
-
     private fun opaque(rgb: Int): Int = 0xFF000000.toInt() or rgb
   }
 }
@@ -128,9 +97,7 @@ val CodeHighlightStyleKey: StyleExtensionKey<CodeHighlightStyle> =
 
 /**
  * The colors code blocks are highlighted with: the style stored under [CodeHighlightStyleKey]
- * laid over the default palette for [StyleConfig.codeBlockStyle]'s background.
+ * laid over [CodeHighlightStyle.Default].
  */
-fun StyleConfig.codeHighlightStyle(): CodeHighlightStyle {
-  val palette = CodeHighlightStyle.defaultFor(codeBlockStyle.backgroundColor)
-  return get(CodeHighlightStyleKey)?.over(palette) ?: palette
-}
+fun StyleConfig.codeHighlightStyle(): CodeHighlightStyle =
+  get(CodeHighlightStyleKey)?.over(CodeHighlightStyle.Default) ?: CodeHighlightStyle.Default

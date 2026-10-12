@@ -690,8 +690,10 @@ Info strings match case-insensitively.
 Each of the 14 token types takes its color from the first of:
 
 1. a color you set (below);
-2. GitHub's palette, dark when the `codeBlock` `backgroundColor` is dark and light otherwise — the default code block is dark, so it gets the dark one;
+2. GitHub's dark palette, made for the default dark code block;
 3. the `codeBlock` color. Operators, punctuation, variables and embedded code have no palette color, so they land here unless you set one.
+
+The palette does not change with the code block's background. If you give `codeBlock` a light `backgroundColor`, set the token colors too.
 
 In Compose, set colors with the `codeHighlight` style block. Like `math`, it is an extension function from the plugin's artifact, so it needs an import:
 
