@@ -39,7 +39,7 @@ class AndroidExampleMainActivity : ComponentActivity() {
 
       MaterialTheme {
         // Math ships as its own artifact; this scope parses and renders `$...$` / `$$...$$` for every
-        // EnrichedMarkdownText below, no `Md4cFlags(latexMath = true)` needed.
+        // EnrichedMarkdownText below.
         LatexMathPlugin {
           Scaffold(
             modifier = Modifier.fillMaxSize(),

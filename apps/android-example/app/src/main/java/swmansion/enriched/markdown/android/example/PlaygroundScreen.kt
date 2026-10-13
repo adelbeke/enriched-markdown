@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.swmansion.enriched.markdown.compose.EnrichedMarkdownText
-import com.swmansion.enriched.markdown.compose.Md4cFlags
+import com.swmansion.enriched.markdown.compose.Flags
 import java.io.File
 
 private fun assetImageUri(
@@ -201,7 +201,7 @@ fun PlaygroundScreen(modifier: Modifier = Modifier) {
               .testTag("preview-text"),
           style = PlaygroundMarkdownStyle,
           flags =
-            Md4cFlags(
+            Flags(
               underline = underlineEnabled,
               superscript = true,
               subscript = true,

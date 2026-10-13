@@ -18,8 +18,7 @@ import com.swmansion.enriched.markdown.plugin.PluginRegistry
  * }
  * ```
  *
- * Enabling it also turns on `Md4cFlags.latexMath`, so math parses without setting the flag. Without
- * the plugin core echoes the source of both node types, delimiters included, when the flag is set.
+ * Enabling it is also what makes the parser recognise math.
  */
 object LatexMathPlugin : MarkdownPlugin {
   const val ID = "com.swmansion.enriched.markdown.math"

@@ -15,9 +15,10 @@ interface MarkdownPlugin {
   fun install(registry: PluginRegistry)
 
   /**
-   * The flags to parse with wherever this plugin is enabled, given those the view was set up with;
-   * a plugin turns on the syntax extensions that produce the nodes it renders, so enabling it is
-   * enough. Plugins adjust in the order they are installed, each seeing the previous one's result.
+   * The parser flags to use wherever this plugin is enabled, given those the view's
+   * [com.swmansion.enriched.markdown.Flags] map to. A plugin turns on the syntax that produces the
+   * nodes it renders, including syntax apps cannot turn on themselves, such as `latexMath`. Plugins
+   * adjust in the order they are installed, each seeing the previous one's result.
    */
   @InternalPluginApi
   fun adjustParserFlags(flags: Md4cFlags): Md4cFlags = flags
