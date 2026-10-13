@@ -13,7 +13,7 @@ fun EnrichedMarkdownText(
   markdown: String,
   modifier: Modifier = Modifier,
   style: MarkdownStyle = MarkdownTheme.style,
-  flags: Md4cFlags = Md4cFlags.DEFAULT,
+  flags: Flags = Flags.Default,
   selectable: Boolean = true,
   imageRequestHeaders: Map<String, String> = emptyMap(),
   onLinkClick: (String) -> Unit = {},
@@ -77,14 +77,13 @@ EnrichedMarkdownText(
 
 ### `flags`
 
-Toggles for md4c's parser extensions. Each one opts a piece of extra syntax in or out; pass only the flags you want to change and the rest keep their defaults.
+Toggles for the optional syntax extensions. Each one opts a piece of extra syntax in or out; pass only the flags you want to change and the rest keep their defaults.
 
-<PropInfo type="Md4cFlags" default="Md4cFlags.DEFAULT" />
+<PropInfo type="Flags" default="Flags.Default" />
 
 ```kotlin
-data class Md4cFlags(
+data class Flags(
   val underline: Boolean = false,
-  val latexMath: Boolean = false,
   val superscript: Boolean = false,
   val subscript: Boolean = false,
   val highlight: Boolean = false,
@@ -98,13 +97,15 @@ data class Md4cFlags(
 ```kotlin
 EnrichedMarkdownText(
   markdown = content,
-  flags = Md4cFlags(underline = true, admonitions = true),
+  flags = Flags(underline = true, admonitions = true),
 )
 ```
 
 :::note
-`Md4cFlags.DEFAULT` turns **everything off except `permissiveAutolinks`**.
+`Flags.Default` turns **everything off except `permissiveAutolinks`**.
 :::
+
+LaTeX math has no flag. Enabling `LatexMathPlugin` from the `math` artifact turns on parsing `$...$` and `$$...$$` along with rendering them, so math is never parsed with nothing to draw it.
 
 For a walkthrough of what each extension changes, see [Parser extensions](/android/guides/parser-extensions).
 
@@ -133,16 +134,6 @@ Renders `==text==` with a highlight band behind the glyphs. Style it through [`h
 <PropInfo type="Boolean" default="false" />
 
 With the flag off, the `==` markers stay literal text.
-
-#### `latexMath`
-
-Parses `$inline$` and `$$block$$` as math nodes.
-
-<PropInfo type="Boolean" default="false" />
-
-:::danger
-**Leave this off.** The parser emits the nodes, but Android has no math renderer, and an unrendered node's text is **dropped from the output** - so a formula renders as nothing at all, with a `No renderer for: LatexMathInline` warning in Logcat. With the flag off, the `$` stays literal text and the formula is at least readable. See the [roadmap](/misc/roadmap).
-:::
 
 #### `permissiveAutolinks`
 
