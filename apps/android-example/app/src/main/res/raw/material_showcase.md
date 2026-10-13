@@ -1,6 +1,6 @@
 # Material 3 theme
 
-Every color on this screen comes from the Material `ColorScheme`. Flip the switch above to move between the light and dark schemes.
+The markdown below takes its colors from the Material `ColorScheme`, except the note, tip, important and warning alerts, which keep GitHub's alert colors. Flip the switch above to move between the light and dark schemes.
 
 ## Inline formatting
 
