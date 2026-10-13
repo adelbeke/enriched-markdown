@@ -540,15 +540,18 @@ shows as its raw source.
 
 ```kotlin
 import com.swmansion.enriched.markdown.math.LatexError
+import com.swmansion.enriched.markdown.math.LatexMathPlugin
 
-EnrichedMarkdownText(
-  markdown = content,
-  onPluginEvent = { event ->
-    if (event is LatexError) {
-      Log.w("Latex", "${event.source} failed: ${event.message}")
-    }
-  },
-)
+LatexMathPlugin {
+  EnrichedMarkdownText(
+    markdown = content,
+    onPluginEvent = { event ->
+      if (event is LatexError) {
+        Log.w("Latex", "${event.source} failed: ${event.message}")
+      }
+    },
+  )
+}
 ```
 
 ```kotlin
