@@ -2,6 +2,7 @@ package com.swmansion.enriched.markdown.plugin
 
 import android.content.Context
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
+import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.renderer.NodeRenderer
 import com.swmansion.enriched.markdown.renderer.RendererConfig
 
@@ -12,6 +13,14 @@ interface MarkdownPlugin {
 
   @InternalPluginApi
   fun install(registry: PluginRegistry)
+
+  /**
+   * The flags to parse with wherever this plugin is enabled, given those the view was set up with;
+   * a plugin turns on the syntax extensions that produce the nodes it renders, so enabling it is
+   * enough. Plugins adjust in the order they are installed, each seeing the previous one's result.
+   */
+  @InternalPluginApi
+  fun adjustParserFlags(flags: Md4cFlags): Md4cFlags = flags
 }
 
 @InternalPluginApi

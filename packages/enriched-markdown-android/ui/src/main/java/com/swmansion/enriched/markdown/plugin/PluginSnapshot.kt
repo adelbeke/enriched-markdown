@@ -5,6 +5,7 @@ package com.swmansion.enriched.markdown.plugin
 import android.content.Context
 import android.util.Log
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode.NodeType
+import com.swmansion.enriched.markdown.parser.Md4cFlags
 import com.swmansion.enriched.markdown.renderer.NodeRenderer
 import com.swmansion.enriched.markdown.renderer.RendererConfig
 
@@ -26,9 +27,13 @@ class PluginSnapshot internal constructor(
   val nodeRenderers: Map<NodeType, (RendererConfig, Context) -> NodeRenderer>,
   @property:InternalPluginApi
   val blockSegments: Map<NodeType, BlockSegmentRegistration>,
+  private val parserFlagAdjusters: List<(Md4cFlags) -> Md4cFlags>,
 ) {
+  /** [flags] as every installed plugin adjusts them, in plugin order. */
+  internal fun adjustParserFlags(flags: Md4cFlags): Md4cFlags = parserFlagAdjusters.fold(flags) { adjusted, adjust -> adjust(adjusted) }
+
   companion object {
-    val EMPTY = PluginSnapshot(emptyMap(), emptyMap())
+    val EMPTY = PluginSnapshot(emptyMap(), emptyMap(), emptyList())
 
     /**
      * Later plugins win a node type that several claim. Of several plugins with the same id only
@@ -41,7 +46,7 @@ class PluginSnapshot internal constructor(
           .reversed()
           .distinctBy { it.id }
           .reversed()
-          .map { plugin -> Registrations(plugin.id).also(plugin::install) },
+          .map { plugin -> Registrations(plugin.id, plugin::adjustParserFlags).also(plugin::install) },
       )
 
     internal fun build(installed: Collection<Registrations>): PluginSnapshot {
@@ -66,7 +71,7 @@ class PluginSnapshot internal constructor(
         }
       }
 
-      return PluginSnapshot(nodeRenderers, blockSegments)
+      return PluginSnapshot(nodeRenderers, blockSegments, installed.map { it.adjustParserFlags })
     }
 
     private fun warnOnConflict(
@@ -84,6 +89,7 @@ class PluginSnapshot internal constructor(
 
   internal class Registrations(
     val pluginId: String,
+    val adjustParserFlags: (Md4cFlags) -> Md4cFlags = { it },
   ) : PluginRegistry {
     val nodeRenderers = LinkedHashMap<NodeType, (RendererConfig, Context) -> NodeRenderer>()
     val blockSegments = LinkedHashMap<NodeType, PluginBlockSegment<*>>()

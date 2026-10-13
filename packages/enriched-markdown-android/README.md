@@ -59,7 +59,7 @@ Scopes nest: an inner scope adds its plugins to those enabled outside, and a sco
 
 Without the plugin nothing breaks: `$...$` and `$$...$$` render as their raw source, delimiters included, and logcat carries a single `EnrichedMarkdown` warning naming the missing artifact and how to enable the plugin.
 
-The plugin and the parser flag are two separate switches. `Md4cFlags(latexMath = true)` is what makes the parser recognise math at all; the plugin is what draws it. With the flag off, `$...$` is just text, plugin or not.
+Enabling the plugin also turns on `Md4cFlags(latexMath = true)`, the parser flag that makes `$...$` and `$$...$$` math at all, for every instance it applies to, so there is no flag to set alongside it. Setting the flag without the plugin still parses math, and renders it as its raw source.
 
 ## Quick start
 
@@ -167,7 +167,7 @@ The `markdownStyle` builder supports these blocks:
 | `thematicBreak` | Horizontal rules |
 | `table` | Tables |
 | `spoiler` | The overlay that conceals `\|\|spoiler\|\|` text |
-| `math` | Block LaTeX math (`$$...$$`; needs the `:math` artifact and `Md4cFlags(latexMath = true)`) |
+| `math` | Block LaTeX math (`$$...$$`; needs the `:math` artifact and its `LatexMathPlugin`) |
 | `inlineMath` | Inline LaTeX math (`$...$`; same two requirements) |
 
 Use `MarkdownStyle.merge { }` to layer overrides (e.g. light/dark variants) without rebuilding the full style. `a.merge(b)` and `a + b` layer a whole style on top of another the same way.
@@ -517,22 +517,23 @@ never equal, so every recomposition would restart the overlay.
 
 #### LaTeX math
 
-With the `:math` artifact on the classpath, the instance inside a `LatexMathPlugin { }` scope,
-and `Md4cFlags(latexMath = true)` on the instance, `$...$` renders inline
+With the `:math` artifact on the classpath and the instance inside a `LatexMathPlugin { }` scope,
+which also turns on `Md4cFlags(latexMath = true)`, `$...$` renders inline
 within the text and `$$...$$` on its own line renders as a standalone, horizontally scrollable
 block. Long-press a block equation to copy its LaTeX source or copy it as Markdown. Display math
 that appears mid-line (`a $$x$$ b`) stays in the text flow rather than breaking the paragraph.
 
 ```kotlin
-EnrichedMarkdownText(
-  markdown = "Mass-energy: \$E = mc^2\$\n\n\$\$\n\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\n\$\$",
-  flags = Md4cFlags(latexMath = true),
-)
+LatexMathPlugin {
+  EnrichedMarkdownText(
+    markdown = "Mass-energy: \$E = mc^2\$\n\n\$\$\n\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\n\$\$",
+  )
+}
 ```
 
-Miss any of the three and the math still reaches the screen, unrendered: with the flag off it is
-literal text, and with the flag on but no plugin enabled it is its own raw source, delimiters
-included, plus one warning in logcat.
+Without the plugin the math still reaches the screen, unrendered: it is literal text, or with
+`Md4cFlags(latexMath = true)` set by hand its own raw source, delimiters included, plus one warning
+in logcat.
 
 #### `onPluginEvent` and `LatexError`
 
@@ -546,7 +547,6 @@ import com.swmansion.enriched.markdown.math.LatexError
 
 EnrichedMarkdownText(
   markdown = content,
-  flags = Md4cFlags(latexMath = true),
   onPluginEvent = { event ->
     if (event is LatexError) {
       Log.w("Latex", "${event.source} failed: ${event.message}")
@@ -577,7 +577,7 @@ data class Md4cFlags(
   val underline: Boolean = false,    // _text_ and __text__ render underlined instead of italic and bold
   val superscript: Boolean = false,  // ^text^ renders raised above the baseline
   val subscript: Boolean = false,    // ~text~ renders lowered below the baseline
-  val latexMath: Boolean = false,    // $...$ and $$...$$ parse as math nodes
+  val latexMath: Boolean = false,    // $...$ and $$...$$ parse as math nodes; LatexMathPlugin turns it on
   val highlight: Boolean = false,    // ==text== renders with a highlight background
   val admonitions: Boolean = false,  // `> [!NOTE]` blockquotes render as GitHub alerts
   // … further md4c extensions
@@ -664,7 +664,7 @@ the only supported way to reach them.
   Markdown keeps the `||` markers)
 - Admonitions / GitHub alerts (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`) — requires `Md4cFlags(admonitions = true)`
 - Tables (GFM), including per-column alignment
-- LaTeX math, inline (`$...$`) and block (`$$...$$`) — requires `Md4cFlags(latexMath = true)` and the `:math` artifact
+- LaTeX math, inline (`$...$`) and block (`$$...$$`) — requires the `:math` artifact and its `LatexMathPlugin`
 
 ### Admonitions
 

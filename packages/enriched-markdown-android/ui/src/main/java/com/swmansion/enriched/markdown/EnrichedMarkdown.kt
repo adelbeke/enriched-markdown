@@ -342,9 +342,10 @@ class EnrichedMarkdown(
     val style = markdownStyle
     val markdown = currentMarkdown
     val plugins = pluginSnapshot
+    val flags = plugins.adjustParserFlags(md4cFlags)
     val onPluginEvent = renderPluginEventSink()
 
-    warnIfMathPluginMissing(plugins)
+    warnIfMathPluginMissing(plugins, flags)
 
     val renderId = ++currentRenderId
     // Segments rendered while detached are superseded by this render.
@@ -364,7 +365,7 @@ class EnrichedMarkdown(
 
       try {
         val ast =
-          parser.parseMarkdown(markdown, md4cFlags) ?: run {
+          parser.parseMarkdown(markdown, flags) ?: run {
             mainHandler.post { if (renderId == currentRenderId) landRenderedSegments(emptyList()) }
             return@submit
           }
@@ -513,8 +514,11 @@ class EnrichedMarkdown(
    * Parsing latex without a plugin to render it is a dependency the app forgot, not a content
    * error, so it is reported once per process rather than per view or per render.
    */
-  private fun warnIfMathPluginMissing(plugins: PluginSnapshot) {
-    if (!md4cFlags.latexMath || missingMathPluginWarned) return
+  private fun warnIfMathPluginMissing(
+    plugins: PluginSnapshot,
+    flags: Md4cFlags,
+  ) {
+    if (!flags.latexMath || missingMathPluginWarned) return
     if (MATH_NODE_TYPES.any { it in plugins.nodeRenderers || it in plugins.blockSegments }) return
 
     missingMathPluginWarned = true

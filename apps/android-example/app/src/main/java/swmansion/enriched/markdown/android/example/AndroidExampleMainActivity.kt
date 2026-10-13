@@ -38,8 +38,8 @@ class AndroidExampleMainActivity : ComponentActivity() {
       var currentRoute by rememberSaveable { mutableStateOf(ExampleRoute.Home) }
 
       MaterialTheme {
-        // Math ships as its own artifact; this scope is what renders `$...$` / `$$...$$` for every
-        // EnrichedMarkdownText below that also sets `Md4cFlags(latexMath = true)`.
+        // Math ships as its own artifact; this scope parses and renders `$...$` / `$$...$$` for every
+        // EnrichedMarkdownText below, no `Md4cFlags(latexMath = true)` needed.
         LatexMathPlugin {
           Scaffold(
             modifier = Modifier.fillMaxSize(),
