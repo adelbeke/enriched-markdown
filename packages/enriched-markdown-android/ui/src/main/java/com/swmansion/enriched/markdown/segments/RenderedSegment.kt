@@ -6,7 +6,6 @@ import android.content.Context
 import android.text.Spannable
 import android.view.View
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
-import com.swmansion.enriched.markdown.plugin.EnrichedMarkdownPlugins
 import com.swmansion.enriched.markdown.plugin.InternalPluginApi
 import com.swmansion.enriched.markdown.plugin.PluginBlockSegment
 import com.swmansion.enriched.markdown.plugin.PluginEventSink
@@ -72,7 +71,7 @@ object MarkdownSegmentRenderer {
     onLinkPress: ((String) -> Unit)? = null,
     onLinkLongPress: ((String) -> Unit)? = null,
     onPluginEvent: PluginEventSink? = null,
-    plugins: PluginSnapshot = EnrichedMarkdownPlugins.snapshot,
+    plugins: PluginSnapshot,
   ): List<RenderedSegment> {
     // Task indices must stay document-global: each Text segment gets a fresh Renderer,
     // so the running count is threaded through explicitly rather than reset per segment.
