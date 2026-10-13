@@ -455,7 +455,18 @@ jobs:
             --build-type release \
             --out "$RUNNER_TEMP/argent/prompt.md"
 
+      # Pinned, not `latest`. The two releases published so far share a
+      # created_at to the second, which is the field GitHub's `latest` pointer
+      # sorts by, so which of them it serves is an arbitrary tiebreak rather
+      # than the newer one. Bumping this is a chore, but a chore beats a session
+      # that silently runs a binary nobody chose. Both values come from the
+      # release page; install-argent-cloud.sh refuses to run an asset whose
+      # sha256 is not the one named here.
       - name: Install argent-cloud
+        env:
+          # Quoted: the tags are all digits, and a bare one is a YAML integer.
+          ARGENT_CLOUD_VERSION: "202610130922"
+          ARGENT_CLOUD_SHA256: c80408332b638529c7df64c17358d29fd730507aac5dc955d8479c5757d77cfc
         run: |
           set -euo pipefail
           .github/argent-cloud/install-argent-cloud.sh "$RUNNER_TEMP/argent"
