@@ -5,7 +5,6 @@ import android.text.SpannableStringBuilder
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.plugin.PluginEventSink
 import com.swmansion.enriched.markdown.plugin.PluginSnapshot
-import com.swmansion.enriched.markdown.spans.ImageSpan
 import com.swmansion.enriched.markdown.spans.MarginBottomSpan
 import com.swmansion.enriched.markdown.styles.StyleConfig
 
@@ -17,7 +16,6 @@ class Renderer {
   private var cachedOnPluginEvent: PluginEventSink? = null
   private var cachedPlugins: PluginSnapshot? = null
 
-  private val collectedImageSpans = mutableListOf<ImageSpan>()
   private var lastElementMarginBottom: Float = 0f
 
   fun configure(
@@ -46,7 +44,7 @@ class Renderer {
         RendererConfig(style, imageRequestHeaders, onPluginEvent),
         context,
         plugins,
-      ) { span -> reportImageSpan(span) }
+      )
   }
 
   fun renderDocument(
@@ -77,7 +75,6 @@ class Renderer {
     factory.resetForNewRender()
     // Must run after resetForNewRender, which zeroes taskItemCount.
     factory.blockStyleContext.taskItemCount = startingTaskIndex
-    collectedImageSpans.clear()
     lastElementMarginBottom = 0f
 
     val builder = SpannableStringBuilder()
@@ -126,16 +123,4 @@ class Renderer {
    * and can be used in MeasurementStore to adjust the measured height.
    */
   fun getLastElementMarginBottom(): Float = lastElementMarginBottom
-
-  /**
-   * Internal helper used by the Factory's lambda to collect spans.
-   */
-  private fun reportImageSpan(span: ImageSpan) {
-    collectedImageSpans.add(span)
-  }
-
-  /**
-   * Provides the segment's text view with the exact list of spans that need registration.
-   */
-  fun getCollectedImageSpans(): List<ImageSpan> = collectedImageSpans
 }
