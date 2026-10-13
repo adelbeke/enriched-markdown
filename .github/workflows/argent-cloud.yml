@@ -55,8 +55,11 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      # The reaction and every refusal below land on a pull request. A comment
+      # on one goes through the issues endpoint but is gated on the pull
+      # request scope, so read here is not enough to write them.
       issues: write
-      pull-requests: read
+      pull-requests: write
     outputs:
       number: ${{ steps.pr.outputs.number }}
       head: ${{ steps.pr.outputs.head }}
@@ -584,7 +587,10 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      # The report is a comment on a pull request, which goes through the
+      # issues endpoint but is gated on the pull request scope - so both.
       issues: write
+      pull-requests: write
     outputs:
       comment: ${{ steps.post.outputs.url }}
     env:
