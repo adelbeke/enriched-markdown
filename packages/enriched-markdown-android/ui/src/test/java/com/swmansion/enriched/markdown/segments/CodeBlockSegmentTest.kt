@@ -1,5 +1,6 @@
 package com.swmansion.enriched.markdown.segments
 
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.view.View
@@ -275,6 +276,17 @@ class CodeBlockSegmentTest {
     copyButtonOf(view).performClick()
 
     assertEquals("line 1\nline 2", clipboardText())
+  }
+
+  @Test
+  fun copyButtonLeavesTheClipboardAloneForAnEmptyBlock() {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("Previous", "previous"))
+    val view = newView(fencedCodeBlock(""))
+
+    copyButtonOf(view).performClick()
+
+    assertEquals("previous", clipboardText())
   }
 
   @Test

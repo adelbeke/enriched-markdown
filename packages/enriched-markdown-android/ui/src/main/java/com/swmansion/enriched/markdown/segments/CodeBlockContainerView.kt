@@ -116,7 +116,7 @@ class CodeBlockContainerView(
           ceil(codeBlockStyle.fontSize * HEADER_ICON_SCALE).toInt(),
         ),
       )
-      setOnClickListener { if (code.isNotEmpty()) copyToClipboard(code) }
+      setOnClickListener { copyCode() }
     }
 
   private val dividerPaint =
@@ -217,16 +217,23 @@ class CodeBlockContainerView(
 
   private fun showContextMenu(anchor: View): Boolean {
     ContextMenuPopup.show(anchor, this) {
-      item(ContextMenuPopup.Icon.COPY, context.getString(android.R.string.copy)) {
-        copyToClipboard(code)
-      }
+      item(ContextMenuPopup.Icon.COPY, context.getString(android.R.string.copy)) { copyCode() }
       if (selectionMenuConfig.copyAsMarkdown) {
-        item(ContextMenuPopup.Icon.DOCUMENT, selectionMenuConfig.resolvedCopyAsMarkdownLabel) {
-          copyToClipboard(fencedMarkdown(code, language, fenceChar))
-        }
+        item(ContextMenuPopup.Icon.DOCUMENT, selectionMenuConfig.resolvedCopyAsMarkdownLabel) { copyFencedMarkdown() }
       }
     }
     return true
+  }
+
+  // An empty block leaves the clipboard as it was rather than clearing it.
+  private fun copyCode() {
+    if (code.isEmpty()) return
+    copyToClipboard(code)
+  }
+
+  private fun copyFencedMarkdown() {
+    if (code.isEmpty()) return
+    copyToClipboard(fencedMarkdown(code, language, fenceChar))
   }
 
   private fun copyToClipboard(text: String) {
