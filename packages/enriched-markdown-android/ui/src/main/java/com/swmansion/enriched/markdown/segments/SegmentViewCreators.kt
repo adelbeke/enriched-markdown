@@ -74,4 +74,20 @@ object SegmentViewCreators {
   ) {
     view.applyTableNode(segment.node, segment.imageRequestHeaders, segment.plugins, config.onPluginEvent)
   }
+
+  fun createCodeBlockView(
+    segment: RenderedSegment.CodeBlock,
+    config: SegmentViewConfig,
+  ): CodeBlockContainerView =
+    CodeBlockContainerView(config.context, config.style).apply {
+      selectionMenuConfig = config.selectionMenuConfig
+      applyCodeBlockNode(segment.node)
+    }
+
+  fun updateCodeBlockView(
+    view: CodeBlockContainerView,
+    segment: RenderedSegment.CodeBlock,
+  ) {
+    view.applyCodeBlockNode(segment.node)
+  }
 }

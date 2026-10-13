@@ -16,6 +16,10 @@ sealed interface MarkdownSegment {
     val node: MarkdownASTNode,
   ) : MarkdownSegment
 
+  data class CodeBlock(
+    val node: MarkdownASTNode,
+  ) : MarkdownSegment
+
   /** A node a plugin claimed as its own block segment. The payload is produced later, at render time. */
   data class Custom(
     val pluginId: String,
@@ -49,6 +53,11 @@ fun splitASTIntoSegments(
       child.type == MarkdownASTNode.NodeType.Table -> {
         flushTextNodes()
         segments.add(MarkdownSegment.Table(child))
+      }
+
+      child.type == MarkdownASTNode.NodeType.CodeBlock -> {
+        flushTextNodes()
+        segments.add(MarkdownSegment.CodeBlock(child))
       }
 
       else -> {

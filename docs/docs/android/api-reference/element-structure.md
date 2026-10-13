@@ -28,7 +28,7 @@ The whole document renders into a **single native text view**, with block struct
 | Ordered list      | `1. item`                          | Nests                                                                                                     |
 | Task list         | `- [ ]` / `- [x]`                  | Tappable - see [`onTaskListItemPress`](/android/api-reference/enriched-markdown-text#ontasklistitempress) |
 | Table             | GFM pipe table                     | Always enabled - see [below](#tables)                                                                     |
-| Fenced code block | ` ```kotlin `                      | Language label is parsed; no syntax highlighting                                                          |
+| Fenced code block | ` ```kotlin `                      | Long lines scroll - see [below](#code-blocks)                                                             |
 | Block image       | `![alt](url)` alone in a paragraph | See [below](#images-block-vs-inline)                                                                      |
 | Thematic break    | `---`                              |                                                                                                           |
 
@@ -128,6 +128,15 @@ GFM pipe tables render as real views inside the text rather than as monospaced A
 - Cells take inline styling - bold, italic, inline code, strikethrough, and tappable links.
 
 Colors, borders, padding and the header row are all styled through the [`table`](/android/api-reference/style-properties#table) block.
+
+## Code blocks
+
+Fenced code blocks keep their lines intact:
+
+- Lines never wrap. A block wider than the view **scrolls horizontally in place**, inside its box, without moving the rest of the document.
+- This applies to code blocks at the top level of the document. A code block inside a list item or a quote wraps its lines instead.
+- Long-press a code block to copy its code, or to copy it as fenced Markdown.
+- The language label is parsed, but there is no syntax highlighting.
 
 ## Images: block vs. inline
 
