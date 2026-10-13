@@ -9,8 +9,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode.NodeType
 import com.swmansion.enriched.markdown.plugin.PluginSnapshot
+import com.swmansion.enriched.markdown.styles.CodeBlockStyle
 import com.swmansion.enriched.markdown.test.MarkdownRenderTestSupport.defaultStyle
 import com.swmansion.enriched.markdown.test.MarkdownRenderTestSupport.renderSegments
+import com.swmansion.enriched.markdown.test.MarkdownRenderTestSupport.styleWithCodeBlock
 import com.swmansion.enriched.markdown.test.TestAstFactory.blockquote
 import com.swmansion.enriched.markdown.test.TestAstFactory.codeBlock
 import com.swmansion.enriched.markdown.test.TestAstFactory.document
@@ -43,8 +45,10 @@ class CodeBlockSegmentTest {
     children = listOf(text(content)),
   )
 
-  private fun newView(node: MarkdownASTNode): CodeBlockContainerView =
-    CodeBlockContainerView(context, defaultStyle).apply { applyCodeBlockNode(node) }
+  private fun newView(
+    node: MarkdownASTNode,
+    codeBlockStyle: CodeBlockStyle = defaultStyle.codeBlockStyle,
+  ): CodeBlockContainerView = CodeBlockContainerView(context, styleWithCodeBlock(codeBlockStyle)).apply { applyCodeBlockNode(node) }
 
   private fun layOut(
     view: View,
@@ -132,6 +136,35 @@ class CodeBlockSegmentTest {
 
     assertEquals(1000, view.width)
     assertTrue(!scrollViewOf(view).canScrollHorizontally(1))
+  }
+
+  @Test
+  fun shortCodeFillsTheBoxSoALongPressAnywhereReachesTheTextView() {
+    val view = newView(fencedCodeBlock("x"))
+    layOut(view, 1000)
+
+    val scrollView = scrollViewOf(view)
+    val textView = textViewOf(view)
+    assertEquals(scrollView.width, textView.width)
+    assertEquals(scrollView.height, textView.height)
+    assertTrue(textView.isLongClickable)
+  }
+
+  @Test
+  fun codeBlockLineHeightSpacesTheLines() {
+    val code = fencedCodeBlock("line 1\nline 2\nline 3")
+    val plain = newView(code, defaultStyle.codeBlockStyle.copy(lineHeight = 0f))
+    val spaced = newView(code, defaultStyle.codeBlockStyle.copy(lineHeight = 100f))
+    layOut(plain, 1000)
+    layOut(spaced, 1000)
+
+    val plainLayout = textViewOf(plain).layout
+    val spacedLayout = textViewOf(spaced).layout
+    assertTrue(plainLayout.getLineBottom(0) < 100)
+    for (line in 0 until 3) {
+      assertEquals(100, spacedLayout.getLineBottom(line) - spacedLayout.getLineTop(line))
+    }
+    assertEquals(spacedLayout.height - plainLayout.height, spaced.measuredHeight - plain.measuredHeight)
   }
 
   @Test

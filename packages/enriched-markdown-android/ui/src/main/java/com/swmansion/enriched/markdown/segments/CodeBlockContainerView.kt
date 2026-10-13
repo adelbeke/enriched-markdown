@@ -64,6 +64,9 @@ class CodeBlockContainerView(
       isHorizontalScrollBarEnabled = true
       overScrollMode = View.OVER_SCROLL_NEVER
       layoutDirection = View.LAYOUT_DIRECTION_LTR
+      // Short code still fills the box, so a long press anywhere in it lands on the text view;
+      // the scroll view itself swallows touches and never reports a long press.
+      isFillViewport = true
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         horizontalScrollbarThumbDrawable =
           GradientDrawable().apply {

@@ -181,7 +181,7 @@ EnrichedMarkdownText(markdown = content, selectable = false)
 ```
 
 :::note
-A document renders into a single text view, so a selection can run across the whole document - headings, quotes, and code blocks included. It cannot span **two** `EnrichedMarkdownText` composables, though: each one is its own selection scope.
+A selection can run across headings, paragraphs, lists, and quotes, which share one text view. It stops at tables and top-level code blocks, which are views of their own - long-press one to copy it. Nor can a selection span **two** `EnrichedMarkdownText` composables: each one is its own selection scope.
 :::
 
 #### What copying produces {#copying}
