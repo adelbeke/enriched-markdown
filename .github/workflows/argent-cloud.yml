@@ -2,10 +2,14 @@ name: Argent Cloud
 
 # Hand a pull request to Argent Cloud: an AI agent drives a build of the iOS
 # example app on a cloud simulator, screenshots every step, and reports what it
-# saw. Label a pull request `argent: ios` (later pushes re-run it while the label
-# stays), comment `/argent` on it, or start it from the Actions tab with the pull
-# request number. A pull request from a fork runs only at a commit a maintainer
-# named: `/argent <full head SHA>`.
+# saw. Label a pull request `argent: ios`, comment `/argent` on it, or start it
+# from the Actions tab with the pull request number. A pull request from a fork
+# runs only at a commit a maintainer named: `/argent <full head SHA>`.
+#
+# Every trigger here is one deliberate act. Pushing to a pull request never
+# starts a session, whatever labels it carries: a session costs real money and a
+# branch under review gets pushed to all day, so re-running is `/argent` or the
+# label taken off and put back - never a side effect of writing code.
 #
 # Each run spends Anthropic API credit, which is why it is on demand and why
 # write access to this repository is the gate on it. What the agent is told lives
@@ -13,7 +17,9 @@ name: Argent Cloud
 # not need touching to change what gets tested.
 on:
   pull_request:
-    types: [labeled, synchronize]
+    # `labeled` only. `synchronize` would make the label sticky - one run per
+    # push for as long as it stayed on - which is a bill nobody asked for.
+    types: [labeled]
   issue_comment:
     types: [created]
   workflow_dispatch:
@@ -39,9 +45,7 @@ jobs:
   resolve:
     if: >-
       github.repository == 'software-mansion/enriched-markdown' && (
-      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && (
-        (github.event.action == 'labeled' && github.event.label.name == 'argent: ios')
-        || (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'argent: ios'))))
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.label.name == 'argent: ios')
       || (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/argent') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association))
       || github.event_name == 'workflow_dispatch' )
     runs-on: ubuntu-latest
@@ -178,22 +182,6 @@ jobs:
             echo "base=$BASE"
             echo "url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$NUMBER"
           } >> "$GITHUB_OUTPUT"
-
-      # Applied so later pushes re-run the agent while the label stays. A label
-      # added with github.token does not itself fire `pull_request: labeled` -
-      # GitHub suppresses workflow runs from GITHUB_TOKEN events - so this does
-      # not start a second session alongside the one the comment started. Best
-      # effort: a missing label should not throw away a run that is otherwise
-      # ready to go.
-      - name: Label the pull request
-        if: github.event_name == 'issue_comment'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          NUMBER: ${{ steps.pr.outputs.number }}
-        run: |
-          gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels" \
-            -f 'labels[]=argent: ios' --silent \
-            || echo "::warning::Could not add the 'argent: ios' label; create it in the repository settings."
 
       # The prompt's untrusted inputs are produced here, by a job that runs no
       # pull request code, and travel to the agent as a JSON file. They never

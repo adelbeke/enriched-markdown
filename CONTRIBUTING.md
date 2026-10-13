@@ -153,7 +153,7 @@ Our pre-commit hooks verify that lint and typecheck pass when committing.
 
 ### Argent Cloud PR testing
 
-Maintainers can hand a pull request to Argent Cloud, an experimental internal tool that runs an AI agent against a build of `apps/react-native-example` on a cloud simulator, screenshots every step and reports what it saw. Comment `/argent` on the pull request, or add the `argent: ios` label; while the label stays, every push re-runs it, so remove the label once you are done. A pull request from a fork runs only at a commit you have reviewed: `/argent <full head SHA>`. Both paths need write access to the repository.
+Maintainers can hand a pull request to Argent Cloud, an experimental internal tool that runs an AI agent against a build of `apps/react-native-example` on a cloud simulator, screenshots every step and reports what it saw. Comment `/argent` on the pull request, or add the `argent: ios` label. Each of those is one run: pushing to the branch afterwards does not start another, whatever labels the pull request carries, because a session costs real money. To run it again, comment `/argent` again, or take the label off and put it back. A pull request from a fork runs only at a commit you have reviewed: `/argent <full head SHA>`. Both paths need write access to the repository.
 
 The agent's final report appears in the run summary. Its screenshots, that report (`output.log`) and its full running commentary (`stream.log`) are attached to the run as the `argent-cloud-pr-<number>` artifact for fourteen days - Argent's own copy of the screenshots expires twelve hours after the session. Each run spends Anthropic API credit, which is why it is on demand rather than on every pull request.
 
