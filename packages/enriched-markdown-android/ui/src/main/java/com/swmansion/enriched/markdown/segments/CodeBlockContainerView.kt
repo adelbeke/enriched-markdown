@@ -3,14 +3,25 @@ package com.swmansion.enriched.markdown.segments
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.ColorFilter
+import android.graphics.Paint
+import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.text.SpannableString
+import android.text.TextPaint
+import android.text.TextUtils
 import android.util.TypedValue
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
+import android.widget.ImageView
+import androidx.appcompat.widget.AppCompatImageButton
 import androidx.appcompat.widget.AppCompatTextView
+import com.swmansion.enriched.markdown.parser.CodeBlockLanguages
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.spans.LineHeightSpan
 import com.swmansion.enriched.markdown.styles.CodeBlockStyle
@@ -19,12 +30,15 @@ import com.swmansion.enriched.markdown.utils.text.TypefaceUtils
 import com.swmansion.enriched.markdown.utils.text.span.SPAN_FLAGS_EXCLUSIVE_EXCLUSIVE
 import com.swmansion.enriched.markdown.utils.text.view.SelectionMenuConfig
 import com.swmansion.enriched.markdown.views.ContextMenuPopup
+import com.swmansion.enriched.markdown.views.CopyGlyph
 import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 /**
- * Block segment view for a root-level fenced code block: the code never wraps and
- * scrolls horizontally inside the block's box instead. Code blocks nested in a list
- * or blockquote stay in their text segment, drawn by CodeBlockSpan, and wrap.
+ * Block segment view for a root-level fenced code block: a fixed header bar (language
+ * name, copy button) above code that never wraps and scrolls horizontally inside the
+ * block's box instead. Code blocks nested in a list or blockquote stay in their text
+ * segment, drawn by CodeBlockSpan, and wrap.
  */
 class CodeBlockContainerView(
   context: Context,
@@ -39,6 +53,11 @@ class CodeBlockContainerView(
   var selectionMenuConfig: SelectionMenuConfig = SelectionMenuConfig()
 
   private val borderWidth = ceil(codeBlockStyle.borderWidth).toInt()
+  private val padding = ceil(codeBlockStyle.padding).toInt()
+
+  // Distance from the box edge to the header content.
+  private val inset = borderWidth + padding
+  private val headerHeight = inset + headerLabelLineHeight(codeBlockStyle)
 
   private var code: String = ""
   private var language: String? = null
@@ -54,7 +73,6 @@ class CodeBlockContainerView(
       setTextSize(TypedValue.COMPLEX_UNIT_PX, codeBlockStyle.fontSize)
       typeface = TypefaceUtils.applyStyles(context, codeBlockStyle.fontFamily, codeBlockStyle.fontWeight)
       setTextColor(codeBlockStyle.color)
-      val padding = ceil(codeBlockStyle.padding).toInt()
       setPadding(padding, padding, padding, padding)
       setOnLongClickListener { showContextMenu(it) }
     }
@@ -70,14 +88,45 @@ class CodeBlockContainerView(
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         horizontalScrollbarThumbDrawable =
           GradientDrawable().apply {
-            setColor(scrollbarColor(codeBlockStyle.color))
+            setColor(secondaryColor(codeBlockStyle.color))
             cornerRadius = resources.displayMetrics.density * 2
           }
       }
       addView(textView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
     }
 
+  private val languageView =
+    AppCompatTextView(context).apply {
+      includeFontPadding = false
+      maxLines = 1
+      ellipsize = TextUtils.TruncateAt.END
+      setTextSize(TypedValue.COMPLEX_UNIT_PX, codeBlockStyle.fontSize * HEADER_LABEL_SCALE)
+      typeface = headerTypeface
+      setTextColor(secondaryColor(codeBlockStyle.color))
+    }
+
+  private val copyButton =
+    AppCompatImageButton(context).apply {
+      background = null
+      scaleType = ImageView.ScaleType.CENTER
+      contentDescription = context.getString(android.R.string.copy)
+      setImageDrawable(
+        CopyIconDrawable(
+          secondaryColor(codeBlockStyle.color),
+          ceil(codeBlockStyle.fontSize * HEADER_ICON_SCALE).toInt(),
+        ),
+      )
+      setOnClickListener { if (code.isNotEmpty()) copyToClipboard(code) }
+    }
+
+  private val dividerPaint =
+    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+      color = dividerColor(codeBlockStyle.color)
+      strokeWidth = context.resources.displayMetrics.density
+    }
+
   init {
+    setWillNotDraw(false)
     background =
       GradientDrawable().apply {
         setColor(codeBlockStyle.backgroundColor)
@@ -91,11 +140,17 @@ class CodeBlockContainerView(
     isLongClickable = true
     setOnLongClickListener { showContextMenu(it) }
     addView(scrollView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+    addView(languageView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+    addView(copyButton, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
   }
 
   fun applyCodeBlockNode(node: MarkdownASTNode) {
     code = extractCode(node)
-    language = node.getAttribute("language")?.takeIf { it.isNotEmpty() }
+    val newLanguage = node.getAttribute("language")?.takeIf { it.isNotEmpty() }
+    if (newLanguage != language) {
+      language = newLanguage
+      languageView.text = CodeBlockLanguages.displayName(newLanguage)
+    }
     fenceChar = node.getAttribute("fenceChar")?.firstOrNull() ?: '`'
     textView.text = buildCodeText(code, codeBlockStyle)
   }
@@ -106,13 +161,24 @@ class CodeBlockContainerView(
   ) {
     val unspecified = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
     textView.measure(unspecified, unspecified)
-    // The box fills the width it is given; only a wrap_content parent shrinks it to the code.
-    val width = resolveSize(textView.measuredWidth + borderWidth * 2, widthSpec)
+    languageView.measure(unspecified, unspecified)
+    // The copy button is a headerHeight square at the end of the header.
+    val headerWidth = inset * 2 + languageView.measuredWidth + headerHeight
+    // The box fills the width it is given; only a wrap_content parent shrinks it to its content.
+    val width = resolveSize(maxOf(textView.measuredWidth + borderWidth * 2, headerWidth), widthSpec)
     scrollView.measure(
       MeasureSpec.makeMeasureSpec((width - borderWidth * 2).coerceAtLeast(0), MeasureSpec.EXACTLY),
       unspecified,
     )
-    setMeasuredDimension(width, scrollView.measuredHeight + borderWidth * 2)
+    copyButton.measure(
+      MeasureSpec.makeMeasureSpec(headerHeight, MeasureSpec.EXACTLY),
+      MeasureSpec.makeMeasureSpec(headerHeight, MeasureSpec.EXACTLY),
+    )
+    languageView.measure(
+      MeasureSpec.makeMeasureSpec((width - inset * 2 - headerHeight).coerceAtLeast(0), MeasureSpec.AT_MOST),
+      unspecified,
+    )
+    setMeasuredDimension(width, headerHeight + scrollView.measuredHeight + borderWidth)
   }
 
   override fun onLayout(
@@ -122,27 +188,109 @@ class CodeBlockContainerView(
     right: Int,
     bottom: Int,
   ) {
+    val width = right - left
+    // The header content is centered above the divider, which sits halfway into the code's top padding.
+    val headerCenterY = dividerY() / 2f
+    val labelTop = (headerCenterY - languageView.measuredHeight / 2f).roundToInt()
+    languageView.layout(inset, labelTop, inset + languageView.measuredWidth, labelTop + languageView.measuredHeight)
+
+    // The button is wider than its icon; the icon, not the button, lines up with the content inset.
+    val iconWidth = copyButton.drawable?.intrinsicWidth ?: copyButton.measuredWidth
+    val iconSlack = ((copyButton.measuredWidth - iconWidth) / 2).coerceAtLeast(0)
+    val buttonLeft = (width - inset - copyButton.measuredWidth + iconSlack).coerceAtLeast(0)
+    val buttonTop = (headerCenterY - copyButton.measuredHeight / 2f).roundToInt().coerceAtLeast(0)
+    copyButton.layout(buttonLeft, buttonTop, buttonLeft + copyButton.measuredWidth, buttonTop + copyButton.measuredHeight)
+
     // Inside the border, so scrolled code never paints over it.
-    scrollView.layout(borderWidth, borderWidth, right - left - borderWidth, bottom - top - borderWidth)
+    scrollView.layout(borderWidth, headerHeight, width - borderWidth, bottom - top - borderWidth)
   }
 
+  // Divider between the header and the code, drawn in the gap the code's top
+  // padding leaves, so it adds no height of its own.
+  override fun onDraw(canvas: Canvas) {
+    super.onDraw(canvas)
+    val y = dividerY()
+    canvas.drawLine(borderWidth.toFloat(), y, (width - borderWidth).toFloat(), y, dividerPaint)
+  }
+
+  private fun dividerY(): Float = headerHeight + padding / 2f
+
   private fun showContextMenu(anchor: View): Boolean {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     ContextMenuPopup.show(anchor, this) {
       item(ContextMenuPopup.Icon.COPY, context.getString(android.R.string.copy)) {
-        clipboard.setPrimaryClip(ClipData.newPlainText("Code", code))
+        copyToClipboard(code)
       }
       if (selectionMenuConfig.copyAsMarkdown) {
         item(ContextMenuPopup.Icon.DOCUMENT, selectionMenuConfig.resolvedCopyAsMarkdownLabel) {
-          clipboard.setPrimaryClip(ClipData.newPlainText("Code", fencedMarkdown(code, language, fenceChar)))
+          copyToClipboard(fencedMarkdown(code, language, fenceChar))
         }
       }
     }
     return true
   }
 
+  private fun copyToClipboard(text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("Code", text))
+  }
+
+  private class CopyIconDrawable(
+    color: Int,
+    private val size: Int,
+  ) : Drawable() {
+    private val paint =
+      Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = size / 20f
+        strokeJoin = Paint.Join.ROUND
+        strokeCap = Paint.Cap.ROUND
+        this.color = color
+      }
+
+    private val glyph = CopyGlyph()
+
+    override fun draw(canvas: Canvas) {
+      glyph.draw(canvas, bounds.width().toFloat(), paint)
+    }
+
+    override fun getIntrinsicWidth() = size
+
+    override fun getIntrinsicHeight() = size
+
+    override fun setAlpha(alpha: Int) {
+      paint.alpha = alpha
+    }
+
+    override fun setColorFilter(colorFilter: ColorFilter?) {
+      paint.colorFilter = colorFilter
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun getOpacity() = PixelFormat.TRANSLUCENT
+  }
+
   internal companion object {
-    private fun scrollbarColor(color: Int): Int = (color and 0x00FFFFFF) or (0x99 shl 24)
+    private const val HEADER_LABEL_SCALE = 0.85f
+
+    // Drawable box for the copy glyph, as a multiple of the code font size,
+    // matching the React Native package's header.
+    private const val HEADER_ICON_SCALE = 1.08f
+
+    private val headerTypeface: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+
+    private fun secondaryColor(color: Int): Int = (color and 0x00FFFFFF) or (0x99 shl 24)
+
+    private fun dividerColor(color: Int): Int = (color and 0x00FFFFFF) or (0x33 shl 24)
+
+    private fun headerLabelLineHeight(style: CodeBlockStyle): Int {
+      val paint =
+        TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+          textSize = style.fontSize * HEADER_LABEL_SCALE
+          typeface = headerTypeface
+        }
+      val metrics = paint.fontMetrics
+      return ceil(metrics.descent - metrics.ascent).toInt()
+    }
 
     fun extractCode(node: MarkdownASTNode): String {
       val builder = StringBuilder()
