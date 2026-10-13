@@ -116,7 +116,7 @@ Works in CommonMark text and GitHub-flavor text segments, including blockquotes 
 
 Callback when a rendered image is tapped or clicked. Access the image URL via `event.url` and its Markdown alt text via `event.altText` (`""` when the image has no alt text). Use it to open a lightbox or full-screen viewer.
 
-Fires for block and inline images, including images inside headings, lists, and blockquotes. An image that is also a link (`[![alt](img)](dest)`) keeps link behavior and fires [`onLinkPress`](#onlinkpress) instead, so a single tap never fires both. Not fired for images inside GFM tables.
+Fires for block and inline images, including images inside headings, lists, blockquotes, and GFM table cells. An image that is also a link (`[![alt](img)](dest)`) keeps link behavior and fires [`onLinkPress`](#onlinkpress) instead, so a single tap never fires both.
 
 Setting this callback makes images interactive on the native side; leaving it unset keeps the existing tap, text-selection, and long-press menu behavior unchanged. On web the image becomes focusable, exposes a button role for screen readers, and can be activated with Enter/Space, while the browser's right-click menu is preserved.
 
@@ -560,6 +560,30 @@ This is content, not style: keep `markdownStyle` stable and change this map as l
       label: 'Button.tsx',
     },
   }}
+/>
+```
+
+### `linkRecognition`
+
+Opt-in link recognition for text that is not written as a Markdown link, such as `#1234`, `@name`, `$skill` or a file path. Off by default. Works in both flavors on every platform.
+
+| Key | Type | Matches |
+| --- | ---- | ------- |
+| `text` | `RegExp` | Every nonempty, non-overlapping match inside a plain-text run |
+| `inlineCode` | `RegExp` | An inline-code span whose whole content matches becomes one link |
+
+A recognized link's URL is the matched text itself, so `linkVariants`, `linkPillContent`, `linkContextMenuItems`, `onLinkPress` and `onLinkLongPress` apply to it like to any other link. Existing links, autolinks, code blocks, images, video and math are never touched. The Markdown source is unchanged: copying, including Copy as Markdown, returns the original text without link syntax.
+
+Matching happens per parsed text run, after Markdown parsing, so a pattern cannot match across formatting. `__init__.py` as plain text is split by emphasis parsing and will not match, while `` `__init__.py` `` as inline code matches whole. With the `latexMath` flag on (the default), two `$` on one line form a math span, so `$deploy ... $test` is math, not two skills; turn the flag off or escape the `$` in such content.
+
+Only the regex source and the `i` and `s` flags are used. Patterns must be valid for `NSRegularExpression` and `java.util.regex.Pattern` as well as JavaScript; an invalid pattern turns that recognizer off. This is different from the input's `linkRegex`, which detects URLs and is on by default. Pass the object inline or hoisted as you like: an equal config does not re-send the prop.
+
+```tsx
+<EnrichedMarkdownText
+  markdown="Fixed in #1284, see `src/App.tsx`"
+  linkRecognition={{ text: /#\d+/, inlineCode: /[\w./-]+\.tsx?/ }}
+  markdownStyle={{ linkVariants: { '^#\\d+$': { pill: true } } }}
+  onLinkPress={({ url }) => openReference(url)}
 />
 ```
 
