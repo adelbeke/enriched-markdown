@@ -133,10 +133,11 @@ Colors, borders, padding and the header row are all styled through the [`table`]
 
 Fenced code blocks keep their lines intact:
 
+- A header bar above the code shows the fence's language name (` ```py ` reads "Python") and a **copy button** that copies the code.
 - Lines never wrap. A block wider than the view **scrolls horizontally in place**, inside its box, without moving the rest of the document.
 - This applies to code blocks at the top level of the document. A code block inside a list item or a quote wraps its lines instead.
 - Long-press a code block to copy its code, or to copy it as fenced Markdown. A top-level code block is not part of the text selection.
-- The language label is parsed, but there is no syntax highlighting.
+- There is no syntax highlighting.
 
 ## Images: block vs. inline
 
