@@ -23,7 +23,7 @@ The whole document renders into a **single native text view**, with block struct
 | Heading           | `# H1` … `###### H6`               | Six levels, each styled independently                                                                     |
 | Paragraph         | Text separated by a blank line     |                                                                                                           |
 | Blockquote        | `> quoted`                         | Nests                                                                                                     |
-| Admonition        | `> [!NOTE]`                        | Needs `Md4cFlags(admonitions = true)` - see [below](#admonitions)                                         |
+| Admonition        | `> [!NOTE]`                        | Needs `Flags(admonitions = true)` - see [below](#admonitions)                                             |
 | Unordered list    | `- item`                           | Nests                                                                                                     |
 | Ordered list      | `1. item`                          | Nests                                                                                                     |
 | Task list         | `- [ ]` / `- [x]`                  | Tappable - see [`onTaskListItemPress`](/android/api-reference/enriched-markdown-text#ontasklistitempress) |
@@ -38,18 +38,18 @@ The whole document renders into a **single native text view**, with block struct
 | ------------- | ---------------------------- | ------------------------------------------------------------------------------------------------- |
 | Strong        | `**bold**`, `__bold__`       |                                                                                                   |
 | Emphasis      | `*italic*`, `_italic_`       |                                                                                                   |
-| Underline     | `_text_`, `__text__`         | Needs `Md4cFlags(underline = true)`, and **replaces** the italic/bold meaning of those markers    |
+| Underline     | `_text_`, `__text__`         | Needs `Flags(underline = true)`, and **replaces** the italic/bold meaning of those markers        |
 | Strikethrough | `~~struck~~`                 |                                                                                                   |
 | Inline code   | `` `code` ``                 |                                                                                                   |
 | Link          | `[text](url)`                | Inert until you handle [`onLinkClick`](/android/api-reference/enriched-markdown-text#onlinkclick) |
 | Autolink      | `<https://…>`, or a bare URL | Bare URLs need `permissiveAutolinks`, which is on by default                                      |
 | Inline image  | `![alt](url)` beside text    | See [below](#images-block-vs-inline)                                                              |
-| Superscript   | `^text^`                     | Needs `Md4cFlags(superscript = true)`                                                             |
-| Subscript     | `~text~`                     | Needs `Md4cFlags(subscript = true)`                                                               |
-| Highlight     | `==text==`                   | Needs `Md4cFlags(highlight = true)`                                                               |
+| Superscript   | `^text^`                     | Needs `Flags(superscript = true)`                                                                 |
+| Subscript     | `~text~`                     | Needs `Flags(subscript = true)`                                                                   |
+| Highlight     | `==text==`                   | Needs `Flags(highlight = true)`                                                                   |
 
 :::important
-The `_` markers are context-dependent. By default `_italic_` and `__bold__` mean the same as `*italic*` and `**bold**`, but `Md4cFlags(underline = true)` reinterprets both `_text_` and `__text__` as underline, so under that flag they no longer produce emphasis or strong. The asterisk markers `*` and `**` always mean emphasis and strong, whatever the flag.
+The `_` markers are context-dependent. By default `_italic_` and `__bold__` mean the same as `*italic*` and `**bold**`, but `Flags(underline = true)` reinterprets both `_text_` and `__text__` as underline, so under that flag they no longer produce emphasis or strong. The asterisk markers `*` and `**` always mean emphasis and strong, whatever the flag.
 :::
 
 ## Nesting
@@ -103,7 +103,7 @@ A blockquote whose **first line** is one of the five GitHub alert markers render
 
 The five types are `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, and `[!CAUTION]`. Colors come from the [`admonitions`](/android/api-reference/style-properties#admonitions) style block.
 
-This is an opt-in parser extension. Without `Md4cFlags(admonitions = true)` the marker stays **literal text** inside an ordinary quote.
+This is an opt-in parser extension. Without `Flags(admonitions = true)` the marker stays **literal text** inside an ordinary quote.
 
 Two behaviors worth knowing:
 
@@ -156,7 +156,7 @@ By default Markdown **reflows** text: a single newline inside a paragraph is tre
 
 ### Preserving single newlines
 
-`Md4cFlags(hardSoftBreaks = true)` turns every single newline into a real line break, so the lines you typed are the lines you get:
+`Flags(hardSoftBreaks = true)` turns every single newline into a real line break, so the lines you typed are the lines you get:
 
 ```markdown
 Roses are red
@@ -167,7 +167,7 @@ Without the flag that renders as one line. With it, two. This is the flag to rea
 
 ### Blank lines
 
-`Md4cFlags(preserveBlankLines = true)` keeps consecutive blank lines instead of collapsing them, so deliberate vertical whitespace in the source survives into the output:
+`Flags(preserveBlankLines = true)` keeps consecutive blank lines instead of collapsing them, so deliberate vertical whitespace in the source survives into the output:
 
 ```markdown
 A first paragraph.
@@ -181,16 +181,17 @@ Both flags are off by default, and both are set per instance through [`flags`](/
 
 ## Not rendered yet
 
+LaTeX math is not listed here: it renders through `LatexMathPlugin` from the `math` artifact, which is also what turns on its parsing.
+
 The parser understands more than the renderer draws. These constructs parse without error but produce no special rendering today:
 
 | Element                       | Status                          |
 | ----------------------------- | ------------------------------- |
-| LaTeX math (inline and block) | Renderer in progress            |
 | Spoilers                      | Renderer in progress            |
 | Code syntax highlighting      | Not yet built into this package |
 
 :::caution
-A construct with no renderer has its text **dropped from the output** rather than shown unstyled, so enabling [`latexMath`](/android/api-reference/enriched-markdown-text#latexmath) makes that content vanish. The flag is off by default; leave it off until the renderer lands. Spoilers have no flag to enable, so they are simply parsed and skipped.
+A construct with no renderer has its text **dropped from the output** rather than shown unstyled. Spoilers have no flag to enable, so they are simply parsed and skipped.
 :::
 
 See the [roadmap](/misc/roadmap) for what is landing next.

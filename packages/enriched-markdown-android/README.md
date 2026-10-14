@@ -57,9 +57,7 @@ For a single plugin, its own scope is shorter: `LatexMathPlugin { }` is the same
 
 Scopes nest: an inner scope adds its plugins to those enabled outside, and a scope for a plugin already enabled replaces it and moves it last, so where two plugins claim the same Markdown element, the innermost scope wins. To choose the plugins of one instance, pass `plugins = listOf(LatexMathPlugin)` to `EnrichedMarkdownText`, which overrides the enclosing scopes.
 
-Without a plugin nothing breaks: fenced code renders in the code block color, and `$...$` and `$$...$$` render as their raw source, delimiters included, with a single `EnrichedMarkdown` warning in logcat naming the missing math artifact and how to enable the plugin.
-
-The math plugin and its parser flag are two separate switches. `Md4cFlags(latexMath = true)` is what makes the parser recognise math at all; the plugin is what draws it. With the flag off, `$...$` is just text, plugin or not. Code highlighting has no flag: fenced code is always parsed with its language.
+Without a plugin nothing breaks: fenced code renders in the code block color, and `$...$` and `$$...$$` stay plain text. Enabling the math plugin is also what makes them parse as math at all. Code highlighting has no parser switch: fenced code is always parsed with its language.
 
 ## Quick start
 
@@ -159,13 +157,13 @@ The `markdownStyle` builder supports these blocks:
 | `strong` | Bold text |
 | `emphasis` | Italic text |
 | `strikethrough` | Struck-through text |
-| `underline` | Underlined text (requires `Md4cFlags(underline = true)`) |
-| `highlight` | Highlighted text `==text==` (requires `Md4cFlags(highlight = true)`) |
+| `underline` | Underlined text (requires `Flags(underline = true)`) |
+| `highlight` | Highlighted text `==text==` (requires `Flags(highlight = true)`) |
 | `superscript` | Superscript text (`^text^`) |
 | `subscript` | Subscript text (`~text~`) |
 | `code` | Inline code |
 | `codeBlock` | Fenced code blocks |
-| `blockquote` | Block quotes, and `admonitions { }` for GitHub alerts (requires `Md4cFlags(admonitions = true)`) |
+| `blockquote` | Block quotes, and `admonitions { }` for GitHub alerts (requires `Flags(admonitions = true)`) |
 | `list` | Ordered and unordered lists |
 | `taskList` | Task list checkboxes |
 | `image` | Block images |
@@ -173,7 +171,7 @@ The `markdownStyle` builder supports these blocks:
 | `thematicBreak` | Horizontal rules |
 | `table` | Tables |
 | `spoiler` | The overlay that conceals `\|\|spoiler\|\|` text |
-| `math` | Block LaTeX math (`$$...$$`; needs the `:math` artifact and `Md4cFlags(latexMath = true)`) |
+| `math` | Block LaTeX math (`$$...$$`; needs the `:math` artifact and its `LatexMathPlugin`) |
 | `inlineMath` | Inline LaTeX math (`$...$`; same two requirements) |
 | `codeHighlight` | Token colors in highlighted code blocks (needs the `:code-highlight` artifact; see [Code highlighting](#colors)) |
 
@@ -194,7 +192,7 @@ markdownStyle {
 }
 ```
 
-Rendering `^text^`/`~text~` as superscript/subscript nodes requires enabling the corresponding `Md4cFlags` when parsing.
+Rendering `^text^`/`~text~` as superscript/subscript nodes requires enabling the corresponding `Flags`.
 
 `spoiler` colors the overlay that conceals `||spoiler||` text: `color` paints the particles and fills
 the solid block. The effect itself, and its tuning, is the `spoilerOverlay` parameter of
@@ -250,7 +248,7 @@ fun EnrichedMarkdownText(
   markdown: String,
   modifier: Modifier = Modifier,
   style: MarkdownStyle = MarkdownTheme.style,
-  flags: Md4cFlags = Md4cFlags.Default,
+  flags: Flags = Flags.Default,
   selectable: Boolean = true,
   imageRequestHeaders: Map<String, String> = emptyMap(),
   onLinkClick: (String) -> Unit = {},
@@ -268,7 +266,7 @@ fun EnrichedMarkdownText(
 |-----------|-------------|
 | `markdown` | Markdown source string |
 | `style` | Per-instance style override |
-| `flags` | Optional parser extensions (see `Md4cFlags`) |
+| `flags` | Optional syntax extensions (see `Flags`) |
 | `selectable` | Enable text selection |
 | `imageRequestHeaders` | HTTP headers attached to remote image requests (e.g. `Referer`) |
 | `onLinkClick` | Called when a link is tapped |
@@ -524,22 +522,21 @@ never equal, so every recomposition would restart the overlay.
 
 #### LaTeX math
 
-With the `:math` artifact on the classpath, the instance inside a `LatexMathPlugin { }` scope,
-and `Md4cFlags(latexMath = true)` on the instance, `$...$` renders inline
+With the `:math` artifact on the classpath and the instance inside a `LatexMathPlugin { }` scope,
+`$...$` renders inline
 within the text and `$$...$$` on its own line renders as a standalone, horizontally scrollable
 block. Long-press a block equation to copy its LaTeX source or copy it as Markdown. Display math
 that appears mid-line (`a $$x$$ b`) stays in the text flow rather than breaking the paragraph.
 
 ```kotlin
-EnrichedMarkdownText(
-  markdown = "Mass-energy: \$E = mc^2\$\n\n\$\$\n\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\n\$\$",
-  flags = Md4cFlags(latexMath = true),
-)
+LatexMathPlugin {
+  EnrichedMarkdownText(
+    markdown = "Mass-energy: \$E = mc^2\$\n\n\$\$\n\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}\n\$\$",
+  )
+}
 ```
 
-Miss any of the three and the math still reaches the screen, unrendered: with the flag off it is
-literal text, and with the flag on but no plugin enabled it is its own raw source, delimiters
-included, plus one warning in logcat.
+Without the plugin the math still reaches the screen, unrendered, as literal text.
 
 #### `onPluginEvent` and `LatexError`
 
@@ -550,16 +547,18 @@ shows as its raw source.
 
 ```kotlin
 import com.swmansion.enriched.markdown.math.LatexError
+import com.swmansion.enriched.markdown.math.LatexMathPlugin
 
-EnrichedMarkdownText(
-  markdown = content,
-  flags = Md4cFlags(latexMath = true),
-  onPluginEvent = { event ->
-    if (event is LatexError) {
-      Log.w("Latex", "${event.source} failed: ${event.message}")
-    }
-  },
-)
+LatexMathPlugin {
+  EnrichedMarkdownText(
+    markdown = content,
+    onPluginEvent = { event ->
+      if (event is LatexError) {
+        Log.w("Latex", "${event.source} failed: ${event.message}")
+      }
+    },
+  )
+}
 ```
 
 ```kotlin
@@ -577,20 +576,21 @@ only appended to, so streamed content does not report the same failure on every 
 its failures are reported again; so does a recycled view. `PluginEvent` itself carries only
 `pluginId`, so check the type — as above — before reading a plugin's own fields.
 
-### `Md4cFlags`
+### `Flags`
 
 ```kotlin
-data class Md4cFlags(
-  val underline: Boolean = false,    // _text_ and __text__ render underlined instead of italic and bold
-  val superscript: Boolean = false,  // ^text^ renders raised above the baseline
-  val subscript: Boolean = false,    // ~text~ renders lowered below the baseline
-  val latexMath: Boolean = false,    // $...$ and $$...$$ parse as math nodes
-  val highlight: Boolean = false,    // ==text== renders with a highlight background
-  val admonitions: Boolean = false,  // `> [!NOTE]` blockquotes render as GitHub alerts
-  // … further md4c extensions
+data class Flags(
+  val underline: Boolean = false,           // _text_ and __text__ render underlined instead of italic and bold
+  val superscript: Boolean = false,         // ^text^ renders raised above the baseline
+  val subscript: Boolean = false,           // ~text~ renders lowered below the baseline
+  val highlight: Boolean = false,           // ==text== renders with a highlight background
+  val permissiveAutolinks: Boolean = true,  // bare URLs, www. links and e-mail addresses become links
+  val hardSoftBreaks: Boolean = false,      // every line break inside a paragraph is kept
+  val preserveBlankLines: Boolean = false,  // each blank line renders as an empty line
+  val admonitions: Boolean = false,         // `> [!NOTE]` blockquotes render as GitHub alerts
 ) {
   companion object {
-    val Default: Md4cFlags
+    val Default: Flags
   }
 }
 ```
@@ -599,11 +599,11 @@ data class Md4cFlags(
 Pass flags per instance:
 
 ```kotlin
-import com.swmansion.enriched.markdown.compose.Md4cFlags
+import com.swmansion.enriched.markdown.compose.Flags
 
 EnrichedMarkdownText(
   markdown = "_underlined_",
-  flags = Md4cFlags(underline = true),
+  flags = Flags(underline = true),
 )
 ```
 
@@ -749,9 +749,9 @@ tree-sitter and every bundled grammar are MIT-licensed. Their notices ship insid
 - Spoilers (`||hidden||`, tap to reveal). Adjacent spoilers reveal together. Concealment is visual
   only: screen readers read concealed text as ordinary text, and a plain Copy yields it too (Copy as
   Markdown keeps the `||` markers)
-- Admonitions / GitHub alerts (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`) — requires `Md4cFlags(admonitions = true)`
+- Admonitions / GitHub alerts (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`) — requires `Flags(admonitions = true)`
 - Tables (GFM), including per-column alignment
-- LaTeX math, inline (`$...$`) and block (`$$...$$`) — requires `Md4cFlags(latexMath = true)` and the `:math` artifact
+- LaTeX math, inline (`$...$`) and block (`$$...$$`) — requires the `:math` artifact and its `LatexMathPlugin`
 
 ### Admonitions
 
@@ -769,7 +769,7 @@ stays literal text inside an ordinary quote:
 ```kotlin
 EnrichedMarkdownText(
   markdown = content,
-  flags = Md4cFlags(admonitions = true),
+  flags = Flags(admonitions = true),
 )
 ```
 

@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.swmansion.enriched.markdown.compose.EnrichedMarkdownText
-import com.swmansion.enriched.markdown.compose.Md4cFlags
+import com.swmansion.enriched.markdown.compose.Flags
 import com.swmansion.enriched.markdown.math.LatexError
 
 @Composable
@@ -39,7 +39,7 @@ fun TextScreen(
       markdown = markdown,
       modifier = Modifier.fillMaxWidth(),
       style = CustomMarkdownStyle,
-      flags = Md4cFlags(superscript = true, subscript = true, highlight = true, admonitions = true, latexMath = true),
+      flags = Flags(superscript = true, subscript = true, highlight = true, admonitions = true),
       onLinkClick = { url ->
         runCatching {
           context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
