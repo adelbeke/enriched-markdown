@@ -80,13 +80,13 @@ object SegmentViewCreators {
   ): CodeBlockContainerView =
     CodeBlockContainerView(config.context, config.style).apply {
       selectionMenuConfig = config.selectionMenuConfig
-      applyCodeBlockNode(segment.node)
+      applyCodeBlockNode(segment.node, segment.styledCode)
     }
 
   fun updateCodeBlockView(
     view: CodeBlockContainerView,
     segment: RenderedSegment.CodeBlock,
   ) {
-    view.applyCodeBlockNode(segment.node)
+    view.applyCodeBlockNode(segment.node, segment.styledCode)
   }
 }

@@ -1,8 +1,12 @@
+@file:OptIn(InternalPluginApi::class)
+
 package com.swmansion.enriched.markdown.segments
 
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.view.View
 import android.widget.HorizontalScrollView
 import android.widget.ImageButton
@@ -11,6 +15,10 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode.NodeType
+import com.swmansion.enriched.markdown.plugin.CodeBlockDecorator
+import com.swmansion.enriched.markdown.plugin.InternalPluginApi
+import com.swmansion.enriched.markdown.plugin.MarkdownPlugin
+import com.swmansion.enriched.markdown.plugin.PluginRegistry
 import com.swmansion.enriched.markdown.plugin.PluginSnapshot
 import com.swmansion.enriched.markdown.styles.CodeBlockStyle
 import com.swmansion.enriched.markdown.test.MarkdownRenderTestSupport.defaultStyle
@@ -25,6 +33,7 @@ import com.swmansion.enriched.markdown.test.TestAstFactory.text
 import com.swmansion.enriched.markdown.test.TestAstFactory.unorderedList
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -290,6 +299,47 @@ class CodeBlockSegmentTest {
   }
 
   @Test
+  fun aTopLevelBlocksViewShowsTheDecoratorsSpans() {
+    val calls = mutableListOf<Pair<String, String?>>()
+    val decorator =
+      CodeBlockDecorator { builder, start, end, language, _, _ ->
+        calls += builder.subSequence(start, end).toString() to language
+        builder.setSpan(ForegroundColorSpan(TOKEN_COLOR), start, start + 3, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+      }
+    val plugin =
+      object : MarkdownPlugin {
+        override val id = "decorating"
+
+        override fun install(registry: PluginRegistry) = registry.registerCodeBlockDecorator(decorator)
+      }
+
+    val segment =
+      MarkdownSegmentRenderer
+        .render(
+          listOf(MarkdownSegment.CodeBlock(fencedCodeBlock("val x = 1\n", language = "kotlin"))),
+          defaultStyle,
+          context,
+          plugins = PluginSnapshot.of(plugin),
+        ).single() as RenderedSegment.CodeBlock
+    val view = CodeBlockContainerView(context, defaultStyle).apply { applyCodeBlockNode(segment.node, segment.styledCode) }
+
+    assertEquals(listOf("val x = 1" to "kotlin"), calls)
+    val text = textViewOf(view).text as Spanned
+    val span = text.getSpans(0, text.length, ForegroundColorSpan::class.java).single()
+    assertEquals(TOKEN_COLOR, span.foregroundColor)
+    assertEquals(0 to 3, text.getSpanStart(span) to text.getSpanEnd(span))
+  }
+
+  @Test
+  fun withoutDecoratorsTheBlocksCodeHasNoColorSpans() {
+    val segment = renderSegments(listOf(MarkdownSegment.CodeBlock(fencedCodeBlock("val x = 1", language = "kotlin")))).single()
+
+    val styledCode = (segment as RenderedSegment.CodeBlock).styledCode as Spanned
+    assertEquals("val x = 1", styledCode.toString())
+    assertNull(styledCode.getSpans(0, styledCode.length, ForegroundColorSpan::class.java).firstOrNull())
+  }
+
+  @Test
   fun fencedMarkdownKeepsLanguageAndFenceChar() {
     assertEquals("```kotlin\nval x = 1\n```", CodeBlockContainerView.fencedMarkdown("val x = 1", "kotlin", '`'))
     assertEquals("~~~\nx\n~~~", CodeBlockContainerView.fencedMarkdown("x", null, '~'))
@@ -300,5 +350,9 @@ class CodeBlockSegmentTest {
     val markdown = CodeBlockContainerView.fencedMarkdown("```\nnested\n```", "md", '`')
 
     assertEquals("````md\n```\nnested\n```\n````", markdown)
+  }
+
+  private companion object {
+    const val TOKEN_COLOR = 0xFF123456.toInt()
   }
 }

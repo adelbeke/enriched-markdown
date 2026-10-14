@@ -12,6 +12,9 @@ import com.swmansion.enriched.markdown.styles.StyleConfig
  * builder rather than the AST. Core's own block spans are set by then, so a character style set
  * here applies after the block's and is not repainted with its text color. Enclosing blockquote
  * and list item spans take a higher priority, so they apply before both.
+ *
+ * A top-level block is drawn by its own view instead, so its builder holds only the code, without
+ * the trailing newline, and no block span: the view's text color is the block color.
  */
 @InternalPluginApi
 fun interface CodeBlockDecorator {

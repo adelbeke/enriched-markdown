@@ -11,7 +11,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
-import android.text.SpannableString
+import android.text.SpannableStringBuilder
 import android.text.TextPaint
 import android.text.TextUtils
 import android.util.TypedValue
@@ -23,6 +23,8 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.appcompat.widget.AppCompatTextView
 import com.swmansion.enriched.markdown.parser.CodeBlockLanguages
 import com.swmansion.enriched.markdown.parser.MarkdownASTNode
+import com.swmansion.enriched.markdown.plugin.CodeBlockDecorator
+import com.swmansion.enriched.markdown.plugin.InternalPluginApi
 import com.swmansion.enriched.markdown.spans.LineHeightSpan
 import com.swmansion.enriched.markdown.styles.CodeBlockStyle
 import com.swmansion.enriched.markdown.styles.StyleConfig
@@ -144,7 +146,11 @@ class CodeBlockContainerView(
     addView(copyButton, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
   }
 
-  fun applyCodeBlockNode(node: MarkdownASTNode) {
+  /** [styledCode] is [node]'s code as [renderCode] rendered it; without one it is rendered undecorated here. */
+  fun applyCodeBlockNode(
+    node: MarkdownASTNode,
+    styledCode: CharSequence = buildCodeText(extractCode(node), codeBlockStyle),
+  ) {
     code = extractCode(node)
     val newLanguage = node.getAttribute("language")?.takeIf { it.isNotEmpty() }
     if (newLanguage != language) {
@@ -152,7 +158,7 @@ class CodeBlockContainerView(
       languageView.text = CodeBlockLanguages.displayName(newLanguage)
     }
     fenceChar = node.getAttribute("fenceChar")?.firstOrNull() ?: '`'
-    textView.text = buildCodeText(code, codeBlockStyle)
+    textView.text = styledCode
   }
 
   override fun onMeasure(
@@ -322,11 +328,32 @@ class CodeBlockContainerView(
       return "$fence${language.orEmpty()}\n$code\n$fence"
     }
 
+    /**
+     * Render thread: [node]'s code as the block displays it, then each of [decorators] over all of
+     * it. Their colors win over the text view's, which is the only place the block color is set.
+     */
+    @OptIn(InternalPluginApi::class)
+    fun renderCode(
+      node: MarkdownASTNode,
+      style: StyleConfig,
+      context: Context,
+      decorators: List<CodeBlockDecorator>,
+    ): CharSequence {
+      val text = buildCodeText(extractCode(node), style.codeBlockStyle)
+      if (decorators.isNotEmpty() && text.isNotEmpty()) {
+        val language = node.getAttribute("language")?.takeIf { it.isNotBlank() }
+        for (decorator in decorators) {
+          decorator.decorate(text, 0, text.length, language, style, context)
+        }
+      }
+      return text
+    }
+
     fun buildCodeText(
       code: String,
       style: CodeBlockStyle,
-    ): SpannableString =
-      SpannableString(code).apply {
+    ): SpannableStringBuilder =
+      SpannableStringBuilder(code).apply {
         if (style.lineHeight > 0f && isNotEmpty()) {
           setSpan(LineHeightSpan(style.lineHeight), 0, length, SPAN_FLAGS_EXCLUSIVE_EXCLUSIVE)
         }
