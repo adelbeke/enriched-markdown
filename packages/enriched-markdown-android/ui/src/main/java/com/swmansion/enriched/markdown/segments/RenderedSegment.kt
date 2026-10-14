@@ -41,6 +41,11 @@ sealed interface RenderedSegment {
     override val signature: Long,
   ) : RenderedSegment
 
+  data class CodeBlock(
+    val node: MarkdownASTNode,
+    override val signature: Long,
+  ) : RenderedSegment
+
   /** Holds the plugin that produced [payload], so its view is built by that same plugin. */
   data class Custom<P : PluginSegmentPayload>(
     val pluginId: String,
@@ -104,6 +109,11 @@ object MarkdownSegmentRenderer {
             RenderedTable.render(segment.node, style, context, imageRequestHeaders, plugins, onPluginEvent),
             signature,
           )
+        }
+
+        is MarkdownSegment.CodeBlock -> {
+          val signature = SegmentSignature.signatureForNode(segment.node) xor SegmentSignature.CODE_BLOCK_KIND_SALT
+          RenderedSegment.CodeBlock(segment.node, signature)
         }
 
         is MarkdownSegment.Custom -> {

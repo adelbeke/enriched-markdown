@@ -51,7 +51,7 @@ Give each row a stable `key` as well, so Compose reuses views for the rows you m
 
 ## Selection is per component
 
-Each `EnrichedMarkdownText` is its own selection scope. Within one, a selection can run the whole document - headings, quotes, and code blocks included, since a document renders into a single text view. Across two, it cannot: there is no way to drag a selection from one component into the next, and Compose's `SelectionContainer` does not bridge them.
+Each `EnrichedMarkdownText` is its own selection scope. Within one, a selection can run across headings, paragraphs, lists, and quotes, which share one text view; tables and top-level code blocks are views of their own, so a selection stops at them and a long-press copies them instead. Across two components, it cannot: there is no way to drag a selection from one component into the next, and Compose's `SelectionContainer` does not bridge them.
 
 So if a screen's text should be selectable as one unit, render it as **one** `EnrichedMarkdownText` with one Markdown string, rather than composing several.
 

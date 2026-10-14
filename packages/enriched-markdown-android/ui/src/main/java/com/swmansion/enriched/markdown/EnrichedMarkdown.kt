@@ -15,6 +15,7 @@ import com.swmansion.enriched.markdown.plugin.MarkdownPlugin
 import com.swmansion.enriched.markdown.plugin.PluginEvent
 import com.swmansion.enriched.markdown.plugin.PluginEventSink
 import com.swmansion.enriched.markdown.plugin.PluginSnapshot
+import com.swmansion.enriched.markdown.segments.CodeBlockContainerView
 import com.swmansion.enriched.markdown.segments.ContainerNodeView
 import com.swmansion.enriched.markdown.segments.MarkdownSegmentRenderer
 import com.swmansion.enriched.markdown.segments.RenderedSegment
@@ -291,6 +292,9 @@ class EnrichedMarkdown(
     segmentViews.filterIsInstance<SelectionMenuConfigurable>().forEach {
       it.selectionMenuConfig = config
     }
+    segmentViews.filterIsInstance<CodeBlockContainerView>().forEach {
+      it.selectionMenuConfig = config
+    }
   }
 
   private fun applySelectionColorsToSegments() {
@@ -512,6 +516,7 @@ class EnrichedMarkdown(
       when (segment) {
         is RenderedSegment.Text -> view is EnrichedMarkdownInternalText
         is RenderedSegment.Table -> view is TableContainerView
+        is RenderedSegment.CodeBlock -> view is CodeBlockContainerView
         is RenderedSegment.Custom<*> -> segment.matchesView(view)
       }
 
@@ -519,6 +524,7 @@ class EnrichedMarkdown(
       when (segment) {
         is RenderedSegment.Text -> SegmentViewCreators.createTextView(segment, segmentViewConfig())
         is RenderedSegment.Table -> SegmentViewCreators.createTableView(segment, segmentViewConfig())
+        is RenderedSegment.CodeBlock -> SegmentViewCreators.createCodeBlockView(segment, segmentViewConfig())
         is RenderedSegment.Custom<*> -> segment.createView(segmentViewConfig())
       }
 
@@ -529,6 +535,7 @@ class EnrichedMarkdown(
       when (segment) {
         is RenderedSegment.Text -> SegmentViewCreators.updateTextView(view as EnrichedMarkdownInternalText, segment)
         is RenderedSegment.Table -> SegmentViewCreators.updateTableView(view as TableContainerView, segment)
+        is RenderedSegment.CodeBlock -> SegmentViewCreators.updateCodeBlockView(view as CodeBlockContainerView, segment)
         is RenderedSegment.Custom<*> -> segment.updateView(view, segmentViewConfig())
       }
     }

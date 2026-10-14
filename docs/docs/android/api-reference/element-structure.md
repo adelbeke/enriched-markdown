@@ -14,7 +14,7 @@ The renderer sorts every element into one of two kinds, and the distinction driv
 - **Block elements** occupy their own vertical space and carry their own font, color, and margins. A paragraph, a heading, a list, a quote, a code block.
 - **Inline elements** live inside a line of text and modify a run of it. Bold, italic, links, inline code. They inherit size and line height from the block they sit in and override only what makes them distinct - see [Style inheritance](/android/api-reference/style-properties#style-inheritance).
 
-The whole document renders into a **single native text view**, with block structure drawn by spans rather than by separate views. That is why a selection can run from the first heading to the last list item without interruption.
+Text renders into **native text views**, with block structure drawn by spans rather than by separate views. Consecutive headings, paragraphs, lists, and quotes share one text view, which is why a selection can run from the first heading to the last list item without interruption. Tables and top-level code blocks are views of their own: a selection stops at them, and you copy them with a long-press instead.
 
 ### Block elements
 
@@ -28,7 +28,7 @@ The whole document renders into a **single native text view**, with block struct
 | Ordered list      | `1. item`                          | Nests                                                                                                     |
 | Task list         | `- [ ]` / `- [x]`                  | Tappable - see [`onTaskListItemPress`](/android/api-reference/enriched-markdown-text#ontasklistitempress) |
 | Table             | GFM pipe table                     | Always enabled - see [below](#tables)                                                                     |
-| Fenced code block | ` ```kotlin `                      | Language label is parsed; no syntax highlighting                                                          |
+| Fenced code block | ` ```kotlin `                      | Long lines scroll - see [below](#code-blocks)                                                             |
 | Block image       | `![alt](url)` alone in a paragraph | See [below](#images-block-vs-inline)                                                                      |
 | Thematic break    | `---`                              |                                                                                                           |
 
@@ -128,6 +128,15 @@ GFM pipe tables render as real views inside the text rather than as monospaced A
 - Cells take inline styling - bold, italic, inline code, strikethrough, and tappable links.
 
 Colors, borders, padding and the header row are all styled through the [`table`](/android/api-reference/style-properties#table) block.
+
+## Code blocks
+
+Fenced code blocks keep their lines intact:
+
+- Lines never wrap. A block wider than the view **scrolls horizontally in place**, inside its box, without moving the rest of the document.
+- This applies to code blocks at the top level of the document. A code block inside a list item or a quote wraps its lines instead.
+- Long-press a code block to copy its code, or to copy it as fenced Markdown. A top-level code block is not part of the text selection.
+- The language label is parsed, but there is no syntax highlighting.
 
 ## Images: block vs. inline
 
