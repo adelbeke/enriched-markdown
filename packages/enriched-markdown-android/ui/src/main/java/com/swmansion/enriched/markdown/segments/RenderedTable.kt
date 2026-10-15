@@ -135,39 +135,48 @@ class RenderedTable internal constructor(
           typeface = config.tableTypeface
         }
 
+      val layouts =
+        texts.map { row ->
+          row.map { cellText -> buildCellLayout(cellText, paint, maxColumnWidth.toInt()) }
+        }
+
       val columnWidths = FloatArray(texts.maxOfOrNull { it.size } ?: 0)
-      texts.forEach { row ->
-        row.forEachIndexed { colIndex, cellText ->
-          val layout =
-            StaticLayout.Builder
-              .obtain(cellText, 0, cellText.length, paint, maxColumnWidth.toInt())
-              .setIncludePad(false)
-              .build()
-          val textWidth: Float = (0 until layout.lineCount).maxOfOrNull { line -> layout.getLineWidth(line) } ?: 0f
+      layouts.forEach { row ->
+        row.forEachIndexed { colIndex, layout ->
+          val textWidth = layout.widestLine()
           columnWidths[colIndex] =
             max(columnWidths[colIndex], min(max(ceil(textWidth) + horizontalPadding, minColumnWidth), maxColumnWidth + horizontalPadding))
         }
       }
 
       val rowHeights =
-        texts.map { row ->
+        layouts.map { row ->
           row
-            .mapIndexed { colIndex, cellText ->
-              val layout =
-                StaticLayout.Builder
-                  .obtain(
-                    cellText,
-                    0,
-                    cellText.length,
-                    paint,
-                    (columnWidths[colIndex] - horizontalPadding).toInt().coerceAtLeast(1),
-                  ).setIncludePad(false)
-                  .build()
-              ceil(layout.height.toFloat()) + verticalPadding
+            .mapIndexed { colIndex, layout ->
+              val contentWidth = (columnWidths[colIndex] - horizontalPadding).toInt().coerceAtLeast(1)
+              // Laid out at the widest a column gets, a cell that did not wrap breaks the same in a column it fits.
+              val reusable = contentWidth >= layout.width || (!layout.wrapsAnyLine() && layout.widestLine() <= contentWidth)
+              val fitted = if (reusable) layout else buildCellLayout(layout.text, paint, contentWidth)
+              ceil(fitted.height.toFloat()) + verticalPadding
             }.maxOfOrNull { it } ?: 0f
         }
       return columnWidths.toList() to rowHeights
     }
+
+    private fun buildCellLayout(
+      text: CharSequence,
+      paint: TextPaint,
+      width: Int,
+    ): StaticLayout =
+      StaticLayout.Builder
+        .obtain(text, 0, text.length, paint, width)
+        .setIncludePad(false)
+        .build()
+
+    private fun Layout.widestLine(): Float = (0 until lineCount).maxOfOrNull { line -> getLineWidth(line) } ?: 0f
+
+    /** Whether a line ends where the text itself has no line break. */
+    private fun Layout.wrapsAnyLine(): Boolean = (0 until lineCount - 1).any { line -> text[getLineEnd(line) - 1] != '\n' }
   }
 
   private class HeaderTypefaceSpan(
