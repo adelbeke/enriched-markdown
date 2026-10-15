@@ -45,6 +45,8 @@ struct AppShell: View {
             TextScreen(markdown: sampleMarkdown)
         case .math:
             MathScreen()
+        case .code:
+            CodeScreen()
         case .spoilers:
             SpoilersScreen()
         case .blur:
@@ -60,7 +62,7 @@ struct AppShell: View {
 
     private func handleNavigate(_ target: ExampleRoute) {
         switch target {
-        case .playground, .text, .math, .spoilers, .blur, .hogwarts:
+        case .playground, .text, .math, .code, .spoilers, .blur, .hogwarts:
             path.append(target)
         case .input, .stream, .storybook:
             unavailableRouteName = target.title

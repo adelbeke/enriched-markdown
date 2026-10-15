@@ -31,6 +31,13 @@ private let menuItems: [HomeMenuItem] = [
         accessibilityId: "home-block-math"
     ),
     HomeMenuItem(
+        route: .code,
+        label: "Code",
+        subtext: "syntax-highlighted code blocks",
+        color: .tileIndigo,
+        accessibilityId: "home-block-code"
+    ),
+    HomeMenuItem(
         route: .spoilers,
         label: "Spoilers",
         subtext: "custom overlay animations",

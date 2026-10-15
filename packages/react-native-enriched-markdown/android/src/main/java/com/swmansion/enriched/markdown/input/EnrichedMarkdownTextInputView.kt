@@ -27,7 +27,6 @@ import com.facebook.react.uimanager.StateWrapper
 import com.facebook.react.views.text.ReactTypefaceUtils
 import com.facebook.react.views.text.TextAttributes
 import com.swmansion.enriched.markdown.input.autolink.AutoLinkDetector
-import com.swmansion.enriched.markdown.input.autolink.LinkRegexConfig
 import com.swmansion.enriched.markdown.input.detection.DetectorPipeline
 import com.swmansion.enriched.markdown.input.editing.BlockEditCoordinator
 import com.swmansion.enriched.markdown.input.editing.ClipboardCoordinator
@@ -58,6 +57,7 @@ import com.swmansion.enriched.markdown.input.model.StyleType
 import com.swmansion.enriched.markdown.input.spans.applyBodyLineHeightSpan
 import com.swmansion.enriched.markdown.input.spans.bodyLineMinimumFontMetrics
 import com.swmansion.enriched.markdown.input.toolbar.InputContextMenu
+import com.swmansion.enriched.markdown.utils.common.LinkRegexConfig
 import com.swmansion.enriched.markdown.utils.input.AutoCapitalizeUtils
 import kotlin.math.ceil
 
@@ -720,6 +720,7 @@ class EnrichedMarkdownTextInputView(
             val isEmptyListLine = onlyZwsp && blockCoordinator.listBlockAtLineStart(ls) != null
             if (!isEmptyListLine) {
               runAsATransaction { editable.delete(i, i + 1) }
+              formattingStore.adjustForEdit(i, 1, 0)
               blockStore.adjustForEdit(i, 1, 0)
               anchorChanged = true
             } else {
@@ -738,6 +739,7 @@ class EnrichedMarkdownTextInputView(
         val block = blockCoordinator.listBlockAtLineStart(ls)
         if (block != null && le == ls) {
           runAsATransaction { editable.insert(ls, ZWSP.toString()) }
+          formattingStore.adjustForEdit(ls, 0, 1)
           blockStore.adjustForEdit(ls, 0, 1)
           blockStore.normalizeToLineBounds(editable)
           setSelection(ls + 1)

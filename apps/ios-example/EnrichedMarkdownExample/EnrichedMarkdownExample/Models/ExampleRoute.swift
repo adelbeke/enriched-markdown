@@ -3,6 +3,7 @@ enum ExampleRoute {
     case playground
     case text
     case math
+    case code
     case spoilers
     case blur
     case hogwarts
@@ -16,6 +17,7 @@ enum ExampleRoute {
         case .playground: return "Playground"
         case .text: return "Text"
         case .math: return "Math"
+        case .code: return "Code"
         case .spoilers: return "Spoilers"
         case .blur: return "Blur"
         case .hogwarts: return "Hogwarts"
