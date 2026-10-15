@@ -32,7 +32,7 @@ private fun untrimmedLatexSourceOf(node: MarkdownASTNode): String =
 /** [String.trim], except that it keeps the space of a trailing control space (`\ `), which TeX typesets. */
 private fun trimLatex(source: String): String {
   val trimmed = source.trim()
-  if (trimmed.length == source.length || !trimmed.endsWith('\\')) return trimmed
+  if (source.trimEnd().length == source.length || !trimmed.endsWith('\\')) return trimmed
   val trailingBackslashes = trimmed.length - trimmed.trimEnd('\\').length
   return if (trailingBackslashes % 2 == 1) "$trimmed " else trimmed
 }

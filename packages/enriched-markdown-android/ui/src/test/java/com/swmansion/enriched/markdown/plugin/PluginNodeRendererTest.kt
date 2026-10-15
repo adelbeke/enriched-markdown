@@ -93,6 +93,12 @@ class PluginNodeRendererTest {
     assertEquals("a\\\\", latexSourceOf(latexMathInline("a\\\\ ")))
   }
 
+  /** Only trailing whitespace can have held the space of a control space; a leading space dropped is no reason to add one. */
+  @Test
+  fun aTrailingBackslashGainsNoSpaceWhenOnlyLeadingWhitespaceIsDropped() {
+    assertEquals("x\\", latexSourceOf(latexMathInline(" x\\")))
+  }
+
   @Test
   fun theLastPluginToClaimANodeTypeWins() {
     val plugins = PluginSnapshot.of(FakePlugin(id = "a", marker = "a"), FakePlugin(id = "b", marker = "b"))
