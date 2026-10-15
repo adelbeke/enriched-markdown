@@ -20,6 +20,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.swmansion.enriched.markdown.codehighlight.CodeHighlightPlugin
+import com.swmansion.enriched.markdown.compose.MarkdownPlugins
 import com.swmansion.enriched.markdown.math.LatexMathPlugin
 
 class AndroidExampleMainActivity : ComponentActivity() {
@@ -34,13 +36,19 @@ class AndroidExampleMainActivity : ComponentActivity() {
         .bufferedReader()
         .use { it.readText() }
 
+    val materialShowcaseMarkdown =
+      resources
+        .openRawResource(R.raw.material_showcase)
+        .bufferedReader()
+        .use { it.readText() }
+
     setContent {
       var currentRoute by rememberSaveable { mutableStateOf(ExampleRoute.Home) }
 
       MaterialTheme {
-        // Math ships as its own artifact; this scope is what renders `$...$` / `$$...$$` for every
-        // EnrichedMarkdownText below that also sets `Md4cFlags(latexMath = true)`.
-        LatexMathPlugin {
+        // Math and code highlighting ship as their own artifacts; this scope enables both for every
+        // EnrichedMarkdownText below, and LatexMathPlugin also turns on `$...$` / `$$...$$` parsing.
+        MarkdownPlugins(LatexMathPlugin, CodeHighlightPlugin) {
           Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = Color.White,
@@ -52,6 +60,7 @@ class AndroidExampleMainActivity : ComponentActivity() {
                       ExampleRoute.Home -> "Enriched Markdown Examples"
                       ExampleRoute.Playground -> "Playground"
                       ExampleRoute.Text -> "Text"
+                      ExampleRoute.MaterialTheme -> "Material Theme"
                       else -> currentRoute.name
                     },
                   )
@@ -80,6 +89,7 @@ class AndroidExampleMainActivity : ComponentActivity() {
                     when (route) {
                       ExampleRoute.Playground -> currentRoute = ExampleRoute.Playground
                       ExampleRoute.Text -> currentRoute = ExampleRoute.Text
+                      ExampleRoute.MaterialTheme -> currentRoute = ExampleRoute.MaterialTheme
                       else ->
                         Toast
                           .makeText(
@@ -99,6 +109,12 @@ class AndroidExampleMainActivity : ComponentActivity() {
               ExampleRoute.Text ->
                 TextScreen(
                   markdown = sampleMarkdown,
+                  modifier = Modifier.padding(innerPadding),
+                )
+
+              ExampleRoute.MaterialTheme ->
+                MaterialThemeScreen(
+                  markdown = materialShowcaseMarkdown,
                   modifier = Modifier.padding(innerPadding),
                 )
 
