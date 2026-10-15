@@ -63,7 +63,6 @@ class StyleConfig(
     value: T,
   ): StyleConfig = copy(extensions = extensions + (key to value))
 
-  /** A copy with [style] for paragraphs, as a table cell renders its text; never mutated in place, for the same reason. */
   fun withParagraphStyle(style: ParagraphStyle): StyleConfig = copy(paragraphStyle = style)
 
   private fun copy(
