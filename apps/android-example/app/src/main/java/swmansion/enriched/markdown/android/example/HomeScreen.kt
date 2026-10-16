@@ -40,6 +40,7 @@ private val menuItems =
       Color(0xFF6750A4),
       "home-block-material-theme",
     ),
+    HomeMenuItem(ExampleRoute.Halloween, "Halloween", "a haunted house of spoiler overlays", Color(0xFFF97316), "home-block-halloween"),
     HomeMenuItem(ExampleRoute.Input, "Input", "chat-style rich text input", Color(0xFFFF9500), "home-block-input"),
     HomeMenuItem(ExampleRoute.Stream, "Stream", "streaming markdown with tables", Color(0xFFAF52DE), "home-block-stream"),
     HomeMenuItem(ExampleRoute.Storybook, "Storybook", "component stories", Color(0xFFFF2D55), "home-block-storybook"),

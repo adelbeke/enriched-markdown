@@ -44,6 +44,7 @@ class AndroidExampleMainActivity : ComponentActivity() {
 
     setContent {
       var currentRoute by rememberSaveable { mutableStateOf(ExampleRoute.Home) }
+      val barContent = if (currentRoute.paintsOwnBackdrop) Color.White else Color(0xFF001A72)
 
       MaterialTheme {
         // Math and code highlighting ship as their own artifacts; this scope enables both for every
@@ -51,7 +52,7 @@ class AndroidExampleMainActivity : ComponentActivity() {
         MarkdownPlugins(LatexMathPlugin, CodeHighlightPlugin) {
           Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = Color.White,
+            containerColor = if (currentRoute.paintsOwnBackdrop) Color(0xFF0E0818) else Color.White,
             topBar = {
               TopAppBar(
                 title = {
@@ -61,6 +62,7 @@ class AndroidExampleMainActivity : ComponentActivity() {
                       ExampleRoute.Playground -> "Playground"
                       ExampleRoute.Text -> "Text"
                       ExampleRoute.MaterialTheme -> "Material Theme"
+                      ExampleRoute.Halloween -> "Halloween"
                       else -> currentRoute.name
                     },
                   )
@@ -68,15 +70,15 @@ class AndroidExampleMainActivity : ComponentActivity() {
                 navigationIcon = {
                   if (currentRoute != ExampleRoute.Home) {
                     TextButton(onClick = { currentRoute = ExampleRoute.Home }) {
-                      Text("Back", color = Color(0xFF001A72))
+                      Text("Back", color = barContent)
                     }
                   }
                 },
                 colors =
                   TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFFBEEBD0),
-                    titleContentColor = Color(0xFF001A72),
-                    navigationIconContentColor = Color(0xFF001A72),
+                    containerColor = if (currentRoute.paintsOwnBackdrop) Color.Transparent else Color(0xFFBEEBD0),
+                    titleContentColor = barContent,
+                    navigationIconContentColor = barContent,
                   ),
               )
             },
@@ -90,6 +92,7 @@ class AndroidExampleMainActivity : ComponentActivity() {
                       ExampleRoute.Playground -> currentRoute = ExampleRoute.Playground
                       ExampleRoute.Text -> currentRoute = ExampleRoute.Text
                       ExampleRoute.MaterialTheme -> currentRoute = ExampleRoute.MaterialTheme
+                      ExampleRoute.Halloween -> currentRoute = ExampleRoute.Halloween
                       else ->
                         Toast
                           .makeText(
@@ -117,6 +120,9 @@ class AndroidExampleMainActivity : ComponentActivity() {
                   markdown = materialShowcaseMarkdown,
                   modifier = Modifier.padding(innerPadding),
                 )
+
+              // The night runs under the bar; only the content steps below it.
+              ExampleRoute.Halloween -> HalloweenScreen(contentPadding = innerPadding)
 
               else -> Unit
             }
