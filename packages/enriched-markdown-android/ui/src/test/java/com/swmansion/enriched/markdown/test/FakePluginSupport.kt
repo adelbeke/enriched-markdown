@@ -132,13 +132,14 @@ class FakeSegmentView(
 class FakeInlineSpan(
   private val source: String,
   private val htmlText: String? = source,
+  private val plainText: String = "plain:$source",
 ) : ReplacementSpan(),
   PluginInlineSpan {
   override fun toMarkdownSource(): String = "@@$source@@"
 
   override fun toHtmlText(): String? = htmlText
 
-  override fun toPlainText(): String = "plain:$source"
+  override fun toPlainText(): String = plainText
 
   override fun getSize(
     paint: Paint,

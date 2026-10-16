@@ -10,6 +10,7 @@ import android.widget.TextView
 import androidx.core.view.ViewCompat
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.customview.widget.ExploreByTouchHelper
+import com.swmansion.enriched.markdown.plugin.hasReadablePluginSpan
 import com.swmansion.enriched.markdown.plugin.readableText
 import com.swmansion.enriched.markdown.spans.AdmonitionHeaderSpan
 import com.swmansion.enriched.markdown.spans.BaseListSpan
@@ -290,7 +291,7 @@ class MarkdownAccessibilityHelper(
       // Text before the span
       if (segmentPos < span.start) {
         val beforeText = spanned.readableText(segmentPos, span.start).trim()
-        if (beforeText.isNotEmpty() && beforeText.any { it.isLetterOrDigit() }) {
+        if (spanned.shouldCreateTextItem(beforeText, segmentPos, span.start)) {
           items.add(createTextItem(nextId++, beforeText, segmentPos, span.start, text, spanned))
         }
       }
@@ -306,13 +307,23 @@ class MarkdownAccessibilityHelper(
     // Text after the last span
     if (segmentPos < paraEnd) {
       val afterText = spanned.readableText(segmentPos, paraEnd).trim()
-      if (afterText.isNotEmpty() && afterText.any { it.isLetterOrDigit() }) {
+      if (spanned.shouldCreateTextItem(afterText, segmentPos, paraEnd)) {
         items.add(createTextItem(nextId++, afterText, segmentPos, paraEnd, text, spanned))
       }
     }
 
     return nextId
   }
+
+  /**
+   * Whether text beside a semantic span gets an item of its own: words do, and so does a plugin
+   * span's label even when it is symbols alone (`$+$`), but ordinary punctuation does not.
+   */
+  private fun Spanned.shouldCreateTextItem(
+    readable: String,
+    start: Int,
+    end: Int,
+  ): Boolean = readable.isNotEmpty() && (readable.any { it.isLetterOrDigit() } || hasReadablePluginSpan(start, end))
 
   private fun createTextItem(
     id: Int,

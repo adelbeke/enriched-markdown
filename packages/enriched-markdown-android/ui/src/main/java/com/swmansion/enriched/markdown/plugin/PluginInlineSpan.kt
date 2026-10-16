@@ -39,3 +39,13 @@ internal fun Spanned.readableText(
   }
   return result.toString()
 }
+
+/** Whether [start]..[end] holds a plugin span with plain text to read, symbols alone included (`$+$` reads `+`). */
+@OptIn(InternalPluginApi::class)
+internal fun Spanned.hasReadablePluginSpan(
+  start: Int,
+  end: Int,
+): Boolean =
+  getSpans(start, end, PluginInlineSpan::class.java).any {
+    getSpanStart(it) >= start && getSpanEnd(it) <= end && !it.toPlainText().isNullOrBlank()
+  }
