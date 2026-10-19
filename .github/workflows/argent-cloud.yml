@@ -40,6 +40,18 @@ on:
         required: false
         type: string
 
+# Pinned, not `latest`. Releases on that channel are cut from one commit and
+# share a created_at, which is the field GitHub's `latest` pointer sorts by, so
+# which build it serves is an arbitrary tiebreak rather than the newest one -
+# and old tags get deleted, so a pin is also what has to move when one goes.
+# Both values come from the release page; install-argent-cloud.sh refuses to run
+# an asset whose sha256 is not the one named here. Workflow-wide because two
+# jobs install the CLI: the one that runs the session and the one that posts it.
+env:
+  # Quoted: the tags are all digits, and a bare one is a YAML integer.
+  ARGENT_CLOUD_VERSION: "202610191521"
+  ARGENT_CLOUD_SHA256: 63b5112b01f187fe327c62364fe89fbf0d07ab7d8d08f901772abaa093af1a50
+
 jobs:
   # Runs no repository code at all, which is what lets it hold the only token in
   # this workflow that can write to GitHub. The association test is a cheap
@@ -449,18 +461,8 @@ jobs:
             --build-type release \
             --out "$RUNNER_TEMP/argent/prompt.md"
 
-      # Pinned, not `latest`. The two releases published so far share a
-      # created_at to the second, which is the field GitHub's `latest` pointer
-      # sorts by, so which of them it serves is an arbitrary tiebreak rather
-      # than the newer one. Bumping this is a chore, but a chore beats a session
-      # that silently runs a binary nobody chose. Both values come from the
-      # release page; install-argent-cloud.sh refuses to run an asset whose
-      # sha256 is not the one named here.
+      # The version and its checksum are pinned at the top of the workflow.
       - name: Install argent-cloud
-        env:
-          # Quoted: the tags are all digits, and a bare one is a YAML integer.
-          ARGENT_CLOUD_VERSION: "202610130922"
-          ARGENT_CLOUD_SHA256: c80408332b638529c7df64c17358d29fd730507aac5dc955d8479c5757d77cfc
         run: |
           set -euo pipefail
           .github/argent-cloud/install-argent-cloud.sh "$RUNNER_TEMP/argent"
@@ -511,13 +513,15 @@ jobs:
             echo "::warning::The last line of output.log is not a session id, so there are no archived screenshots to fetch. The log is still uploaded."
           else
             echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
-            # --out rather than the default ./<session-id>.tar.gz, so the path
-            # the artifact step names is the path this writes, with no reliance
-            # on the working directory. Best effort: the archive lives twelve
-            # hours on Argent's storage, and a session that failed early may
-            # never have written one.
-            ./argent-cloud archives download "$SESSION_ID" --out "session-$SESSION_ID.tar.gz" \
-              || echo "::warning::Could not download the archive for session $SESSION_ID; it may have expired or never been written."
+            # Screenshots only. A session archives its screenshots and its turn
+            # logs separately, and stream.log above already is the turn log.
+            # --out spells out the CLI's own default name, so the path the
+            # artifact step globs for is visibly the path this writes. Best
+            # effort: the archive lives twelve hours on Argent's storage, and a
+            # session that failed early may never have written one.
+            ./argent-cloud archives download "$SESSION_ID" --kind screenshots \
+              --out "$SESSION_ID-screenshots.tar.gz" \
+              || echo "::warning::Could not download the screenshots for session $SESSION_ID; they may have expired or never been written."
           fi
 
           exit "$argent_status"
@@ -564,40 +568,38 @@ jobs:
           path: |
             ${{ runner.temp }}/argent/output.log
             ${{ runner.temp }}/argent/stream.log
-            ${{ runner.temp }}/argent/session-*.tar.gz
+            ${{ runner.temp }}/argent/*-screenshots.tar.gz
           retention-days: 14
           if-no-files-found: warn
 
-  # Posts the run on the pull request: the screenshots inline, the agent's report
-  # under them. Everything it needs arrives in the artifact the argent job
-  # uploaded, so like resolve it runs no pull request code - which is what lets
-  # it hold a write token while the job that ran the agent holds the API keys and
-  # no token at all.
+  # Posts the run on the pull request: the agent's report, then its screenshots.
+  # Everything it needs arrives in the artifact the argent job uploaded, so like
+  # resolve it runs no pull request code - which is what lets it hold a write
+  # token next to the Argent Cloud key.
   #
-  # Screenshots have to be published, not attached. GitHub has no API for
-  # attaching an image to a comment; an artifact is one zip behind an auth wall,
-  # so it can be linked but never rendered; and `data:` URIs are stripped by the
-  # markdown sanitiser. An inline screenshot has to be an image at a URL a
-  # reader's browser can fetch anonymously, so they go to an orphan branch in
-  # this public repository. That is the whole reason for `contents: write` here.
+  # The comment is posted by `argent-cloud comment`, as Argent's GitHub App
+  # (argent-loop), which also uploads the screenshots and puts them inline under
+  # the text. GitHub has no API for attaching an image to a comment, so hosting
+  # them is the backend's job rather than a branch of ours. The app has to be
+  # installed on this repository with read and write access to contents.
+  #
+  # `contents: write` is not for anything this job writes itself. The backend
+  # will comment on a repository only for a caller whose token can push to it -
+  # that is what stops one Argent user posting as the app on someone else's
+  # pull request - and `github.token` with this scope is that proof. The
+  # Anthropic key stays in the argent job: posting needs only the Argent Cloud
+  # key and the backend address.
   report:
     needs: [resolve, argent]
     if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.argent.result != 'skipped' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: argent-cloud
     permissions:
       contents: write
-      # The report is a comment on a pull request, which goes through the
-      # issues endpoint but is gated on the pull request scope - so both.
-      issues: write
-      pull-requests: write
     outputs:
       comment: ${{ steps.post.outputs.url }}
     env:
-      # One knob for how long an inline screenshot keeps working. The artifact
-      # expires at 14 days, so anything past that is this branch's job alone.
-      RETENTION_DAYS: 90
-      BRANCH: argent-screenshots
       NUMBER: ${{ needs.resolve.outputs.number }}
       ARTIFACT: argent-cloud-pr-${{ needs.resolve.outputs.number }}
     steps:
@@ -622,124 +624,11 @@ jobs:
           name: argent-cloud-pr-${{ needs.resolve.outputs.number }}
           path: ${{ runner.temp }}/session
 
-      # The screenshot names are chosen by the agent, inside the session, which
-      # makes them the same untrusted class as the pull request's own text. So
-      # tar never writes a file here: each member is streamed to stdout and this
-      # step picks the path, which makes a member called
-      # `screenshots/../../.github/workflows/x.png` a string rather than a write.
-      # The listing is filtered to one flat directory of PNGs as well.
-      #
-      # Downscaled because the comment is the point: a full-resolution phone
-      # screenshot is ~1 MB and six of them make a comment that loads slowly and
-      # a branch that grows by 5 MB a run. 600px wide is legible for layout and
-      # spacing, which is what these are for, and lands around 45 KB. The
-      # originals stay in the artifact for anything that needs pixels.
-      - name: Prepare the screenshots
-        id: shots
+      - name: Install argent-cloud
         run: |
           set -euo pipefail
-          ARCHIVE=$(find "$RUNNER_TEMP/session" -maxdepth 1 -name 'session-*.tar.gz' | head -n 1)
-          OUT="$RUNNER_TEMP/shots"
-          mkdir -p "$OUT" "$RUNNER_TEMP/raw"
-
-          if [[ -z "$ARCHIVE" ]]; then
-            echo "::warning::The artifact has no session archive, so the comment carries the report alone."
-            echo "count=0" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          CONVERT=""
-          for candidate in magick convert; do
-            if command -v "$candidate" > /dev/null; then CONVERT=$candidate; break; fi
-          done
-          [[ -n "$CONVERT" ]] || echo "::warning::No ImageMagick on this runner; publishing the screenshots at full size."
-
-          COUNT=0
-          while IFS= read -r MEMBER; do
-            if [[ $COUNT -ge 40 ]]; then
-              echo "::warning::More than 40 screenshots; the rest are in the artifact only."
-              break
-            fi
-            BASE=${MEMBER#screenshots/}
-            # The number the report cites, when the agent numbered the file.
-            # Anything unnumbered sorts after the numbered ones rather than being
-            # dropped, because a screenshot with an ugly caption still shows what
-            # the agent saw.
-            if [[ "$BASE" =~ ^([0-9]{1,3})[._-](.+)\.png$ ]]; then
-              ORDER=$((10#${BASH_REMATCH[1]}))
-              SLUG=${BASH_REMATCH[2]}
-            else
-              ORDER=$((900 + COUNT))
-              SLUG=${BASE%.png}
-            fi
-            SLUG=$(printf '%s' "$SLUG" | tr -cd 'A-Za-z0-9._-' | cut -c1-60)
-            [[ -n "$SLUG" ]] || SLUG=screenshot
-
-            tar -xzOf "$ARCHIVE" "$MEMBER" > "$RUNNER_TEMP/raw/in.png"
-            if [[ -n "$CONVERT" ]]; then
-              NAME=$(printf '%03d-%s.jpg' "$ORDER" "$SLUG")
-              "$CONVERT" "$RUNNER_TEMP/raw/in.png" -resize 600x -quality 80 -strip "$OUT/$NAME" \
-                || { echo "::warning::Could not convert $BASE"; continue; }
-            else
-              NAME=$(printf '%03d-%s.png' "$ORDER" "$SLUG")
-              cp "$RUNNER_TEMP/raw/in.png" "$OUT/$NAME"
-            fi
-            COUNT=$((COUNT + 1))
-          done < <(tar -tzf "$ARCHIVE" | grep -E '^screenshots/[A-Za-z0-9._-]+\.png$' | sort -V)
-
-          echo "Prepared $COUNT screenshot(s), $(du -sh "$OUT" | cut -f1) total"
-          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
-
-      # The branch is rewritten as a single orphan commit every run, so it never
-      # accumulates history: a pruned screenshot leaves no blob behind in it, and
-      # a clone of it is never more than the screenshots currently live. The
-      # directories carry a date because pruning by date then needs no git
-      # archaeology.
-      - name: Publish the screenshots
-        id: publish
-        if: ${{ steps.shots.outputs.count != '0' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          DIR="pr-$NUMBER/$(date -u +%Y-%m-%d)-$GITHUB_RUN_ID"
-          WORK="$RUNNER_TEMP/shots-repo"
-          REMOTE="https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
-
-          if git clone --quiet --depth 1 --branch "$BRANCH" --single-branch "$REMOTE" "$WORK" 2>/dev/null; then
-            echo "Branch $BRANCH exists; pruning anything older than $RETENTION_DAYS days."
-          else
-            echo "Branch $BRANCH does not exist yet; starting it."
-            mkdir -p "$WORK"
-            git -C "$WORK" init --quiet
-          fi
-
-          cd "$WORK"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-
-          CUTOFF=$(date -u -d "-$RETENTION_DAYS days" +%Y-%m-%d)
-          shopt -s nullglob
-          for d in pr-*/*/; do
-            STAMP=$(basename "$d" | cut -c1-10)
-            if [[ "$STAMP" < "$CUTOFF" ]]; then
-              echo "pruning $d"
-              rm -rf "$d"
-            fi
-          done
-          shopt -u nullglob
-          find . -mindepth 1 -maxdepth 1 -type d -name 'pr-*' -empty -delete
-
-          mkdir -p "$DIR"
-          cp "$RUNNER_TEMP/shots"/* "$DIR/"
-
-          git checkout --quiet --orphan published
-          git add -A
-          git commit --quiet -m "argent: screenshots for #$NUMBER, run $GITHUB_RUN_ID"
-          git push --force --quiet "$REMOTE" "published:refs/heads/$BRANCH"
-
-          echo "base_url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/raw/$BRANCH/$DIR" >> "$GITHUB_OUTPUT"
-          echo "Published $DIR"
+          .github/argent-cloud/install-argent-cloud.sh "$RUNNER_TEMP/argent"
+          test -x "$RUNNER_TEMP/argent/argent-cloud"
 
       - name: Render the comment
         run: |
@@ -749,30 +638,48 @@ jobs:
           # beyond the artifact itself.
           SESSION=$(tail -n 1 "$RUNNER_TEMP/session/output.log" 2>/dev/null | tr -d '\r' \
             | sed -n 's/^session-id=\([A-Za-z0-9_.-]\{1,128\}\)$/\1/p')
+          SHOTS=$(find "$RUNNER_TEMP/session" -maxdepth 1 -name '*-screenshots.tar.gz' | head -n 1)
           node .github/argent-cloud/render-comment.mjs \
             --report "$RUNNER_TEMP/session/output.log" \
-            --screenshots "$RUNNER_TEMP/shots" \
-            --base-url "${{ steps.publish.outputs.base_url }}" \
+            --has-screenshots "$([[ -n "$SHOTS" ]] && echo true || echo false)" \
             --number "$NUMBER" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             --artifact "$ARTIFACT" \
             --session "${SESSION:-unknown}" \
             --out "$RUNNER_TEMP/comment.md"
 
-      # --body-file, so the body never passes through a shell argument or an
+      # --comment-file, so the body never passes through a shell argument or an
       # interpolation: it is a model's prose and it contains whatever the pull
-      # request talked it into writing.
+      # request talked it into writing. The screenshot names are the agent's
+      # choice too; the tar goes to the backend unopened, so nothing here ever
+      # writes a path out of it.
       - name: Post the comment
         id: post
         env:
-          GH_TOKEN: ${{ github.token }}
+          SIM_ROUTER_API_KEY: ${{ secrets.SIM_ROUTER_API_KEY }}
+          ARGENT_BACKEND_IP: ${{ secrets.ARGENT_BACKEND_IP }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          URL=$(gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" \
-            --method POST --field body=@"$RUNNER_TEMP/comment.md" --jq .html_url)
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "Commented: $URL"
-          echo "[The report on #$NUMBER]($URL)" >> "$GITHUB_STEP_SUMMARY"
+          SHOTS=$(find "$RUNNER_TEMP/session" -maxdepth 1 -name '*-screenshots.tar.gz' | head -n 1)
+          if [[ -z "$SHOTS" ]]; then
+            echo "::warning::The artifact has no screenshots archive, so the comment carries the report alone."
+          fi
+          "$RUNNER_TEMP/argent/argent-cloud" comment \
+            --comment-file "$RUNNER_TEMP/comment.md" \
+            ${SHOTS:+--screenshots "$SHOTS"} \
+            "$GITHUB_REPOSITORY#$NUMBER" \
+            | tee "$RUNNER_TEMP/posted.txt"
+          # The CLI prints the comment's URL. Taken only if it has the shape of
+          # a comment on this pull request, because it becomes a Slack link.
+          URL=$(grep -oE "^https://github\.com/$GITHUB_REPOSITORY/(pull|issues)/$NUMBER#issuecomment-[0-9]+$" \
+            "$RUNNER_TEMP/posted.txt" | tail -n 1 || true)
+          if [[ -n "$URL" ]]; then
+            echo "url=$URL" >> "$GITHUB_OUTPUT"
+            echo "[The report on #$NUMBER]($URL)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Posted, but the CLI printed no comment URL this step recognises; Slack will link the run instead."
+          fi
 
   # Fires for every Argent Cloud run and no other, because it lives in this
   # workflow - that is the whole reason it is a job here rather than a

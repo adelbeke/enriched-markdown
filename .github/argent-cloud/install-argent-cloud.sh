@@ -8,9 +8,9 @@
 #
 # Two environment variables decide which build runs, and the workflow sets both:
 #
-#   ARGENT_CLOUD_VERSION  a release tag, e.g. 202610130922
+#   ARGENT_CLOUD_VERSION  a release tag, e.g. 202610191521
 #   ARGENT_CLOUD_SHA256   that asset's sha256, e.g.
-#                         c80408332b638529c7df64c17358d29fd730507aac5dc955d8479c5757d77cfc
+#                         63b5112b01f187fe327c62364fe89fbf0d07ab7d8d08f901772abaa093af1a50
 #
 # Together they make the download reproducible and verified, which matters
 # because this binary runs with SIM_ROUTER_API_KEY and ANTHROPIC_API_KEY in its
