@@ -178,10 +178,18 @@ jobs:
           # check above applies, and the same one that already decides who may
           # spend the budget and run code in Argent's sandbox. A fork's pull
           # request cannot point this anywhere but a branch of ours.
+          #
+          # The tip of the base branch, not the pull request's baseRefOid. GitHub
+          # does not move baseRefOid when the base branch moves, so for a stacked
+          # pull request it can name a commit well behind the tip - while a
+          # pull_request run takes this workflow file from the merge ref, which
+          # is built on the tip. Tooling from one and the workflow from the other
+          # is a workflow calling scripts from an older version of itself.
           PR=$(gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" \
-            --json headRefOid,isCrossRepository,baseRefOid \
-            --jq '"\(.headRefOid) \(.isCrossRepository) \(.baseRefOid)"')
-          read -r HEAD FORK BASE <<< "$PR"
+            --json headRefOid,isCrossRepository,baseRefName \
+            --jq '"\(.headRefOid) \(.isCrossRepository) \(.baseRefName)"')
+          read -r HEAD FORK BASE_REF <<< "$PR"
+          BASE=$(gh api "repos/$GITHUB_REPOSITORY/commits/heads/$BASE_REF" --jq .sha)
           # Both become checkout refs below, so both are checked for shape here
           # rather than merely for emptiness.
           if [[ ! "${HEAD:-}" =~ ^[0-9a-f]{40}$ || ! "${BASE:-}" =~ ^[0-9a-f]{40}$ ]]; then
