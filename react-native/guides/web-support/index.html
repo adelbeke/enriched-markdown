@@ -11,7 +11,7 @@
 
 <link rel="icon" type="image/png" href="/enriched-markdown/img/favicon.png">
 <script>!function(){try{var e=location.pathname;if([].some(function(t){return e===t||0===e.indexOf(t+"/")}))return;var t=localStorage.getItem("swm.topbarbanner.v1.enriched-topbar-1.ea15c4216158c4097b65fe6504a4b3b7");if(!t)return;var r=JSON.parse(t);if(!r||"number"!=typeof r.height||r.height<5)return;if(Date.now()-r.timestamp>=2592e6)return;var n=document.documentElement;n.style.setProperty("--banner-height-enriched-topbar-1-ea15c4216158c4097b65fe6504a4b3b7",r.height+"px"),"string"==typeof r.bgColor&&n.style.setProperty("--banner-bg-enriched-topbar-1-ea15c4216158c4097b65fe6504a4b3b7",r.bgColor)}catch(e){}}()</script><link rel="stylesheet" href="/enriched-markdown/assets/css/styles.9863f435.css">
-<script src="/enriched-markdown/assets/js/runtime~main.c738642a.js" defer="defer"></script>
+<script src="/enriched-markdown/assets/js/runtime~main.f05004ba.js" defer="defer"></script>
 <script src="/enriched-markdown/assets/js/main.fa68c0c4.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -136,7 +136,7 @@ development.</p>
 <li class=""><code>enableTaskListItemToggle</code> - set to <code>false</code> to render task list checkboxes read-only (the click is fully inert: no toggle, no <code>onTaskListItemPress</code>). The checkbox keeps its normal appearance, marked <code>readOnly</code> / <code>aria-disabled</code> and made pointer-inert rather than <code>disabled</code>, matching iOS and Android</li>
 <li class=""><code>allowTrailingMargin</code>, <code>containerStyle</code>, <code>selectable</code>, <code>selectionColor</code>, <code>md4cFlags</code> (<code>underline</code>, <code>superscript</code>, <code>subscript</code>, <code>latexMath</code>, <code>highlight</code>, <code>hardSoftBreaks</code>, <code>preserveBlankLines</code>, <code>admonitions</code>)</li>
 <li class="">GitHub admonitions (<code>&gt; [!NOTE]</code>) - rendered as callouts with the same icon set and <code>blockquote.admonitions</code> palette as native. There is no <code>flavor</code> prop on web, so they are always on unless <code>md4cFlags={{ admonitions: false }}</code></li>
-<li class="">RTL support via the <code>dir</code> prop (CSS logical properties automatically flip blockquote borders, list indentation, etc.)</li>
+<li class=""><a class="" href="/enriched-markdown/user-experience/rtl">RTL and mixed-direction (bidi) content</a>, resolved per block as on native</li>
 <li class="">Arbitrary DOM attributes, which pass through to the root <code>&lt;div&gt;</code></li>
 </ul>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="ignored-style-keys">Ignored style keys<a href="#ignored-style-keys" class="hash-link" aria-label="Direct link to Ignored style keys" title="Direct link to Ignored style keys" translate="no">​</a></h3>
@@ -157,7 +157,7 @@ There is no way to translate them today, which is a hard limit for non-English
 apps. Setting <code>onCodeBlockPress</code> or <code>onImagePress</code> also puts <code>role=&quot;button&quot;</code> on
 the <code>&lt;pre&gt;</code> / <code>&lt;img&gt;</code>, which replaces their code and image semantics.</p></div></div>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="web-only-props">Web-only props<a href="#web-only-props" class="hash-link" aria-label="Direct link to Web-only props" title="Direct link to Web-only props" translate="no">​</a></h3>
-<table><thead><tr><th>Prop</th><th>Description</th></tr></thead><tbody><tr><td><code>dir</code></td><td>Sets the text direction on the root container (<code>&#x27;ltr&#x27;</code>, <code>&#x27;rtl&#x27;</code>, or <code>&#x27;auto&#x27;</code>). CSS logical properties in the renderers automatically flip layout for RTL.</td></tr><tr><td><code>testID</code></td><td>Rendered as <code>data-testid</code>, so DOM testing libraries can query it.</td></tr></tbody></table>
+<table><thead><tr><th>Prop</th><th>Description</th></tr></thead><tbody><tr><td><code>dir</code></td><td>Text direction (<code>&#x27;ltr&#x27;</code>, <code>&#x27;rtl&#x27;</code>, or <code>&#x27;auto&#x27;</code>). Unset or <code>&#x27;auto&#x27;</code> resolves each block from its content; <code>&#x27;ltr&#x27;</code> / <code>&#x27;rtl&#x27;</code> force the whole document.</td></tr><tr><td><code>testID</code></td><td>Rendered as <code>data-testid</code>, so DOM testing libraries can query it.</td></tr></tbody></table>
 <p>The web entry point exports its own <code>EnrichedMarkdownTextProps</code> type. It drops
 the native-only props and <code>style</code>, and adds the ones above. Note that <code>dir</code> is
 declared on <strong>both</strong> the native and the web props type - deliberately, so a
