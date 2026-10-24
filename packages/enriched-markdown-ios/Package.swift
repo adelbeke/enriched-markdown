@@ -101,8 +101,18 @@ let package = Package(
             path: "Sources/EnrichedMarkdownSyntaxHighlighting"
         ),
         .target(
+            name: "EnrichedMarkdownRepair",
+            path: "repair",
+            exclude: ["core/LICENSE.remend"],
+            sources: ["core", "SwiftRepairShim.cpp"],
+            publicHeadersPath: "include",
+            cxxSettings: [
+                .headerSearchPath("core")
+            ]
+        ),
+        .target(
             name: "EnrichedMarkdownStreaming",
-            dependencies: ["EnrichedMarkdown"],
+            dependencies: ["EnrichedMarkdown", "EnrichedMarkdownRepair"],
             path: "Sources/EnrichedMarkdownStreaming"
         ),
         .testTarget(
@@ -125,5 +135,6 @@ let package = Package(
             dependencies: ["EnrichedMarkdownStreaming"],
             path: "Tests/EnrichedMarkdownStreamingTests"
         )
-    ]
+    ],
+    cxxLanguageStandard: .cxx17
 )
