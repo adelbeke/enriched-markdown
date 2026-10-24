@@ -83,7 +83,10 @@ void repairInlineMarkdownInPlace(std::string &text, const RepairOptions &options
     text.pop_back();
   }
 
-  RepairContext ctx(text, options.inlineMath);
+  RepairContext ctx(text, options.inlineMath, options.withholdMath);
+  if (options.withholdIncomplete || options.withholdMath) {
+    RepairHandlers::withhold(ctx, options);
+  }
   if (options.singleTilde && !options.subscript) { // with subscripts, `~x~` is markup
     RepairHandlers::singleTilde(ctx);
   }
@@ -120,10 +123,10 @@ void repairInlineMarkdownInPlace(std::string &text, const RepairOptions &options
   if (options.strikethrough) {
     RepairHandlers::strikethrough(ctx);
   }
-  if (options.displayMath) {
+  if (options.displayMath && !options.withholdMath) {
     RepairHandlers::displayMath(ctx);
   }
-  if (options.inlineMath) {
+  if (options.inlineMath && !options.withholdMath) {
     RepairHandlers::inlineMath(ctx);
   }
   if (options.spoilers) {

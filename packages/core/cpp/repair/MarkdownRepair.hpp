@@ -54,13 +54,21 @@
 //   already were not, and `~~` inside a fence is not one either. With
 //   `inlineMath` off a lone `$` is currency, so `$5 and *x` closes; the
 //   reference treats every `$` as math.
+// - A `-` or `=` line inside an open fence is code, not a setext underline;
+//   the reference broke it with a zero-width space.
+// - Closers are inserted before trailing whitespace, not only before trailing
+//   newlines: `*italic  ` becomes `*italic*  `, which parses, where the
+//   reference's `*italic  *` does not close.
 // The affected recorded cases in the test data are marked as ours.
 //
 // Additions with no reference counterpart: closers for spoilers, highlight,
-// superscript and subscript (RepairExtensions.cpp).
+// superscript and subscript (RepairExtensions.cpp), and withholding for
+// streaming tails (RepairWithhold.cpp), behind the `withhold` options below.
 //
-// When wiring this into a renderer, default `inlineMath` to the parser's
-// latexMath flag: with `$…$` math enabled an open `$x` should be closed too.
+// When wiring this into a renderer, set `inlineMath` and `displayMath` from
+// the parser's latexMath flag, so `$` is math only when the parser agrees.
+// A renderer that streams token by token turns on `withholdIncomplete`, and
+// `withholdMath` with it.
 //
 // All text is UTF-8. Positions are byte offsets.
 #pragma once
@@ -101,6 +109,23 @@ struct RepairOptions {
   bool highlight = false;
   bool superscript = false;
   bool subscript = false;
+
+  // Streaming tails. Some half-written syntax has no sensible closer: a
+  // delimiter with nothing after it yet, a line that is only a list bullet,
+  // heading hashes or blockquote marker, a task checkbox or admonition title
+  // still being typed, a closing fence still being typed, an image label
+  // without a source. With `withholdIncomplete` on, these are removed, so the
+  // prefix renders as the finished document will once the next token lands,
+  // instead of flashing a bare marker. `withholdMath` does the same for an
+  // unclosed `$…$` or `$$…$$` (whichever of inlineMath / displayMath is on):
+  // it is cut at its opener instead of closed, since a half-written formula
+  // renders wrong either way. It also makes every handler read `$` the way
+  // our parser does (MathLookup with code): a `$` in code or next to a
+  // digit or space is not a delimiter, so `$5 and **x` still closes, and
+  // `_` inside a closed `$…$` is not emphasis. Both default off, for parity
+  // with the reference.
+  bool withholdIncomplete = false;
+  bool withholdMath = false;
 };
 
 // Equivalent to the reference's top-level function.

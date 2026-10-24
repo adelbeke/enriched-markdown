@@ -337,8 +337,41 @@ bool CodeLookup::inside(size_t position) const {
   return insideAt_[std::min(position, insideAt_.size() - 1)] != 0;
 }
 
+namespace {
+
+bool isAsciiPunctuation(uint32_t codePoint) {
+  return (codePoint >= 0x21 && codePoint <= 0x2F) || (codePoint >= 0x3A && codePoint <= 0x40) ||
+         (codePoint >= 0x5B && codePoint <= 0x60) || (codePoint >= 0x7B && codePoint <= 0x7E);
+}
+
+// The line after the newline at `newline` holds nothing but spaces or tabs.
+bool isBlankLineAfter(std::string_view text, size_t newline) {
+  size_t i = newline + 1;
+  while (i < text.size() && (text[i] == ' ' || text[i] == '\t' || text[i] == '\r')) {
+    ++i;
+  }
+  return i >= text.size() || text[i] == '\n';
+}
+
+} // namespace
+
+DollarRun dollarRunAt(std::string_view text, size_t i) {
+  size_t end = i + 1;
+  while (end < text.size() && text[end] == '$') {
+    ++end;
+  }
+  const uint32_t before = codePointBefore(text, i);
+  const uint32_t after = codePointAt(text, end);
+  const bool flanksBefore = before == kNoCodePoint || isJsWhitespace(before) || isAsciiPunctuation(before);
+  const bool flanksAfter = after == kNoCodePoint || isJsWhitespace(after) || isAsciiPunctuation(after);
+  const size_t length = end - i;
+  const bool currency =
+      length == 1 && (after == kNoCodePoint || isJsWhitespace(after) || (after >= '0' && after <= '9'));
+  return {length, flanksBefore && !currency, flanksAfter};
+}
+
 // isWithinMathBlock(), evaluated once for every position.
-MathLookup::MathLookup(std::string_view text, bool inlineDollar)
+MathLookup::MathLookup(std::string_view text, bool inlineDollar, const CodeLookup *code)
     : hasDelimiters_(text.find('$') != npos || text.find("\\(") != npos || text.find("\\[") != npos) {
   if (!hasDelimiters_) {
     return;
@@ -379,6 +412,22 @@ MathLookup::MathLookup(std::string_view text, bool inlineDollar)
       if (handled) {
         mark(i + 1, i + 2);
         i += 2;
+        continue;
+      }
+    }
+    if (code != nullptr && ctx != Context::InlineLatex && ctx != Context::BlockLatex) {
+      if (c == '\n' && isBlankLineAfter(text, i)) {
+        ctx = Context::None; // a span ends with its paragraph
+      } else if (c == '$') {
+        const DollarRun run = code->inside(i) ? DollarRun{1, false, false} : dollarRunAt(text, i);
+        const Context span = run.length == 2 ? Context::BlockDollar : Context::InlineDollar;
+        if (run.length <= 2 && ctx == span && run.canClose) {
+          ctx = Context::None;
+        } else if (run.length <= 2 && ctx == Context::None && run.canOpen && (run.length == 2 || inlineDollar)) {
+          ctx = span;
+        }
+        mark(i + 1, i + run.length);
+        i += run.length;
         continue;
       }
     }
@@ -563,7 +612,7 @@ const CodeLookup &RepairContext::code() {
 
 const MathLookup &RepairContext::math() {
   if (!math_) {
-    math_.emplace(text_, inlineMath_);
+    math_.emplace(text_, inlineMath_, parserMath_ ? &code() : nullptr);
   }
   return *math_;
 }
@@ -612,13 +661,36 @@ void RepairContext::assign(std::string &&replacement) {
   invalidate();
 }
 
+std::string_view stripBlockquotes(std::string_view line, size_t &depth) {
+  depth = 0;
+  for (;;) {
+    size_t i = 0;
+    while (i < line.size() && i < 3 && line[i] == ' ') {
+      ++i;
+    }
+    if (i < line.size() && line[i] == '>') {
+      ++depth;
+      line = line.substr(i + 1);
+      if (!line.empty() && line[0] == ' ') {
+        line.remove_prefix(1);
+      }
+      continue;
+    }
+    return line.substr(i);
+  }
+}
+
 namespace {
+
+bool isTrailingWhitespace(char c) {
+  return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
 
 // Start of the text after the last blank line (a line holding only spaces
 // or tabs), or 0. Trailing whitespace is not a blank line: closers go in
 // front of it, so it never separates an opener from its closer.
 size_t trailingParagraphStart(std::string_view text) {
-  while (!text.empty() && (text.back() == '\n' || text.back() == '\r' || text.back() == ' ' || text.back() == '\t')) {
+  while (!text.empty() && isTrailingWhitespace(text.back())) {
     text.remove_suffix(1);
   }
   size_t start = 0;
@@ -649,27 +721,6 @@ bool isAtxHeadingLine(std::string_view line) {
     ++hashes;
   }
   return hashes >= 1 && hashes <= 6 && i < line.size() && (line[i] == ' ' || line[i] == '\t');
-}
-
-// Strips the blockquote markers that open `line`, each allowed up to three
-// spaces of indentation before it and one space after, and counts them.
-std::string_view stripBlockquotes(std::string_view line, size_t &depth) {
-  depth = 0;
-  for (;;) {
-    size_t i = 0;
-    while (i < line.size() && i < 3 && line[i] == ' ') {
-      ++i;
-    }
-    if (i < line.size() && line[i] == '>') {
-      ++depth;
-      line = line.substr(i + 1);
-      if (!line.empty() && line[0] == ' ') {
-        line.remove_prefix(1);
-      }
-      continue;
-    }
-    return line.substr(i);
-  }
 }
 
 // A thematic break, or a setext underline when it follows a paragraph;
@@ -742,11 +793,8 @@ void RepairContext::closeAt(size_t openerIndex, std::string_view closer) {
   }
   if (closers_.empty()) {
     closersStart_ = text_.size();
-    while (closersStart_ > 0 && text_[closersStart_ - 1] == '\n') { // trailing LF or CRLF
+    while (closersStart_ > 0 && isTrailingWhitespace(text_[closersStart_ - 1])) {
       --closersStart_;
-      if (closersStart_ > 0 && text_[closersStart_ - 1] == '\r') {
-        --closersStart_;
-      }
     }
   }
   // Skip the closers of constructs opened later than ours; ours goes after them.

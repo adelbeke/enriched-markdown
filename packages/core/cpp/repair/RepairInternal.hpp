@@ -107,6 +107,10 @@ std::string_view lineAt(std::string_view text, size_t index);
 // followed by `.` or `)`), or npos if the line does not start with one.
 size_t skipListMarker(std::string_view line);
 
+// Strips the blockquote markers that open `line`, each allowed up to three
+// spaces of indentation before it and one space after, and counts them.
+std::string_view stripBlockquotes(std::string_view line, size_t &depth);
+
 // --- Regex stand-ins -------------------------------------------------------
 
 // /(MARKER)([^c]*)$/ (and, with allowTrailingSingle, /(MARKER)([^c]*c?)$/):
@@ -152,14 +156,27 @@ private:
   std::vector<uint8_t> insideAt_;
 };
 
+// A run of `$` starting at i under our parser's rules: it can open after
+// whitespace or punctuation (or at the start) and close before them (or at
+// the end); a lone `$` before a digit or whitespace is currency and opens
+// nothing.
+struct DollarRun {
+  size_t length;
+  bool canOpen;
+  bool canClose;
+};
+DollarRun dollarRunAt(std::string_view text, size_t i);
+
 // isWithinMathBlock() as a lookup: inside(p) is true when scanning [0, p)
 // ends inside `$…$`, `$$…$$`, `\(…\)` or `\[…\]`. Built only when the text
 // contains a math delimiter, since most callers check that first. With
 // inlineDollar false a lone `$` is currency, not a delimiter; the reference
-// always treats it as math, so `$5 and *x` never closed there.
+// always treats it as math, so `$5 and *x` never closed there. With `code`
+// given, `$` follows our parser's rules instead (dollarRunAt()): a `$`
+// inside code is code, and an open span ends with its paragraph.
 class MathLookup {
 public:
-  explicit MathLookup(std::string_view text, bool inlineDollar = true);
+  explicit MathLookup(std::string_view text, bool inlineDollar = true, const CodeLookup *code = nullptr);
   bool inside(size_t position) const;
 
 private:
@@ -236,7 +253,7 @@ bool isBracketNotALink(std::string_view text, size_t idx, const LineMarkerLookup
 // 2. Lookups shared by the handlers (code, math, complete inline code), built
 //    on first use and rebuilt only when an edit could have changed them.
 // 3. The closer tail: closers placed so far sit in one contiguous run just
-//    before any trailing newlines, ordered so that a later opener closes
+//    before any trailing whitespace, ordered so that a later opener closes
 //    first (`**bold `code` becomes `**bold `code`**`). Insertion is immediate,
 //    as in the reference, so later handlers see earlier closers and never
 //    close the same construct twice.
@@ -246,7 +263,8 @@ bool isBracketNotALink(std::string_view text, size_t idx, const LineMarkerLookup
 // their reading first and edit as their final step.
 class RepairContext {
 public:
-  explicit RepairContext(std::string &text, bool inlineMath = false) : text_(text), inlineMath_(inlineMath) {}
+  explicit RepairContext(std::string &text, bool inlineMath = false, bool parserMath = false)
+      : text_(text), inlineMath_(inlineMath), parserMath_(parserMath) {}
 
   // --- reading
   std::string_view text() const {
@@ -296,6 +314,7 @@ private:
 
   std::string &text_;
   bool inlineMath_; // whether a lone `$` opens math (RepairOptions::inlineMath)
+  bool parserMath_; // our parser's `$` rules for math() (RepairOptions::withholdMath)
 
   std::optional<CodeLookup> code_;
   std::optional<MathLookup> math_;
@@ -348,4 +367,6 @@ void spoilers(RepairContext &ctx);
 void highlight(RepairContext &ctx);
 void superscript(RepairContext &ctx);
 void subscript(RepairContext &ctx);
+// streaming tails (RepairWithhold.cpp)
+void withhold(RepairContext &ctx, const RepairOptions &options);
 } // namespace Markdown::RepairHandlers
