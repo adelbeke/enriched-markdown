@@ -61,6 +61,10 @@ object MarkdownRenderTestSupport {
         putAll(mapOf("borderWidth" to 3.0, "gapWidth" to 8.0, "borderRadius" to 0.0, "padding" to 0.0))
       },
     )
+    style.putMap(
+      "codeBlock",
+      textElement().apply { putAll(mapOf("padding" to 8.0, "borderRadius" to 0.0, "borderWidth" to 0.0)) },
+    )
     style.putMap("taskList", JavaOnlyMap().apply { putAll(defaultTaskList + taskList) })
     style.putMap("list", textElement().apply { putAll(defaultList + list) })
     return StyleConfig(style, context, false, 0f)
