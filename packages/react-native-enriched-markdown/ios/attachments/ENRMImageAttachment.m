@@ -10,11 +10,11 @@
 static NSCache<NSString *, RCTUIImage *> *_originalImageCache;
 static NSCache<NSString *, RCTUIImage *> *_processedImageCache;
 
-@implementation RCTUIView (ENRMImageLayoutObserver)
+@implementation RCTPlatformView (ENRMImageLayoutObserver)
 
 - (id<ENRMImageLayoutObserver>)enrm_imageLayoutObserver
 {
-  RCTUIView *view = self;
+  RCTPlatformView *view = self;
   while (view && ![view conformsToProtocol:@protocol(ENRMImageLayoutObserver)]) {
     view = view.superview;
   }
